@@ -20,15 +20,57 @@
 */
 int logged(char * PATH, int socket_desc){////////////////////come tenereil conto dell'id del messaggio
     char * option=(char *) malloc(sizeof(char));
+    int ret;
+    int option_len=sizeof(char);
     while(1){
-    fprintf(stderr, "Se vuoi scrivere un nuovo messaggio premi N, se vuoi leggere un vecchio messaggio premi L, se vuoi cancellarne uno premi C");
+    fprintf(stderr, "Se vuoi scrivere un nuovo messaggio premi N, se vuoi leggere un vecchio messaggio premi L, se vuoi cancellarne uno premi C, se vuoi uscire premi E");
     scanf("%s",option);
-    switch (option){
-        case "N":
-        
-        
-        }
+    if (!memcmp(option, "E", option_len)) break;
+    while ( (ret = send(socket_desc, option, option_len, 0)) < 0) {
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to socket");
+    }
     
+    if (DEBUG) fprintf(stderr, "sent: %s \n", option);
+    switch (option){
+        
+        case "N":
+        char nome[32];
+        char oggetto[64];
+        char messaggio[1000];
+        fprintf(stderr, "A chi vuoi inviare il tuo messaggio?");
+        scanf("%s",nome);
+        while ( (ret = send(socket_desc, nome, sizeof(nome), 0)) < 0) {
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to socket");
+        
+    }
+    
+    if (DEBUG) fprintf(stderr, "sent: %s \n", nome);
+    fprintf(stderr, "Quale è l'oggetto del tuo messaggio?");
+        scanf("%s",oggetto);
+      while ( (ret = send(socket_desc, oggetto, sizeof(oggetto), 0)) < 0) {
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to socket");
+        
+    }
+    
+    if (DEBUG) fprintf(stderr, "sent: %s \n", oggetto);   
+    fprintf(stderr, "Scrivi il tuomessaggio qui:");
+        scanf("%s",messaggio); 
+      while ( (ret = send(socket_desc, messaggio, sizeof(messaggio), 0)) < 0) {
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to socket");
+        
+    }
+    
+    if (DEBUG) fprintf(stderr, "sent: %s \n", messaggio);            
+        break;
+        case "L":
+        break;
+        case "C":
+        break;
+        }
     
     
     }

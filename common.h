@@ -27,7 +27,7 @@ typedef struct {
    char destinatario[32];
    char oggetto[156];
    char testo[1024];
-}messaggio;
+}messaggio_t;
 
 char* cercaFile(FILE * file,user_t user);
 #endif

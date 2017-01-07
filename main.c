@@ -89,7 +89,8 @@ void connection_handler(int socket_desc) {
    
    char * ceono=cercaFile(file,*user);
    fprintf(stderr, "%s", ceono);
-   
+   char * opzione=(char *)malloc(sizeof(char));
+   int opzione_len=sizeof(char);
    
     while ( (ret = send(socket_desc,ceono , 1, 0)) < 0 ) {
         if (errno == EINTR) continue;
@@ -97,7 +98,51 @@ void connection_handler(int socket_desc) {
     }
     fprintf(stderr, "sent: %s \n", ceono);
     if (DEBUG) fprintf(stderr, "Message of %d bytes sent\n", ret);
-
+    
+    
+     
+    while ( (ret = send(socket_desc,ceono , 1, 0)) < 0 ) {
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to the socket");
+    }
+    fprintf(stderr, "sent: %s \n", ceono);
+    if (DEBUG) fprintf(stderr, "Message of %d bytes sent\n", ret);
+    
+    //Parte che legge l'opzione
+    messaggio_t* messaggio;
+     while ( (recv_bytes = recv(socket_desc, opzione, opzione_len, 0)) < 0 ) {
+        
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to socket");
+    }
+    if (DEBUG) fprintf(stderr, "opzione ricevuta: %s \n", opzione);
+     switch (option){
+        
+        case "N":
+            while ( (recv_bytes = recv(socket_desc, opzione, opzione_len, 0)) < 0 ) {
+        
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to socket");
+    }
+    if (DEBUG) fprintf(stderr, "opzione ricevuta: %s \n", opzione);
+    while ( (recv_bytes = recv(socket_desc, opzione, opzione_len, 0)) < 0 ) {
+        
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to socket");
+    }
+    if (DEBUG) fprintf(stderr, "opzione ricevuta: %s \n", opzione);
+    while ( (recv_bytes = recv(socket_desc, opzione, opzione_len, 0)) < 0 ) {
+        
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to socket");
+    }
+    if (DEBUG) fprintf(stderr, "opzione ricevuta: %s \n", opzione);
+        break;
+        case "L":
+        break;
+        case "C":
+        break;
+}
     // close socket
     ret = close(socket_desc);
     ERROR_HELPER(ret, "Cannot close socket for incoming connection");
