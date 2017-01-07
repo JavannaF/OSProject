@@ -1,0 +1,98 @@
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>  // htons() and inet_addr()
+#include <netinet/in.h> // struct sockaddr_in
+#include <sys/socket.h>
+
+#include "common.h"
+/*CHE DEVE FARE IL MIO SERVER?
+  1.Stabilire una connessione col server e inviare username e password.
+    Se fallisce il login: chiudo la sessione
+    Se fallisce la registrazione, chiedo un altro user_name
+  2.Inviare e messaggi
+  3.Inviare comandi per la lettura, 
+          4. l'archiviazione e 
+          5. la cancellazione dei messaggi 
+
+*/
+
+int main(int argc, char* argv[]) {
+    int ret;
+    int old_or_new=2;
+    size_t allowed_command_len_min = 5*sizeof(char);
+    size_t allowed_command_len_max = 32*sizeof(char);
+    // variables for handling a socket
+    int socket_desc;
+    struct sockaddr_in server_addr = {0}; // some fields are required to be filled with 0
+
+    // create a socket
+    socket_desc = socket(AF_INET, SOCK_STREAM, 0);
+    ERROR_HELPER(socket_desc, "Could not create socket");
+
+    // set up parameters for the connection
+    server_addr.sin_addr.s_addr = inet_addr(SERVER_ADDRESS);
+    server_addr.sin_family      = AF_INET;
+    server_addr.sin_port        = htons(SERVER_PORT); // don't forget about network byte order!
+//FASE 1: Log_In e Registrazione 
+    // initiate a connection on the socket
+    ret = connect(socket_desc, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
+    ERROR_HELPER(ret, "Could not create connection");
+
+    if (DEBUG) {//CHICK CHECK THIS
+    fprintf(stderr, "Connection established!\n");    
+    printf("Benvenuto! Se sei un nuovo utente premi '1', '0' altrimenti. \n");
+    scanf ("%d",&old_or_new);
+    printf("Benvenuto!");
+    }
+
+    char* recv_buf=(char *) malloc(2*sizeof(char));
+    size_t recv_buf_len = 2*sizeof(char);
+    int recv_bytes;
+
+    /////////////HANDLE USERNAME AND PASSWORD////////////
+    char* usr_name=(char*)malloc(32*sizeof(char));
+    char* usr_pwd=(char*)malloc(32*sizeof(char));
+    size_t usr_name_len = 32*sizeof(char);
+    size_t usr_pwd_len = 32*sizeof(char);
+    printf("Inserisci uno user name (minimo 8 massimo 32 caratteri)\n"); scanf("%s",usr_name); //---->INSERISCI CONTROLLI 
+    
+    while ( (ret = send(socket_desc, usr_name, usr_name_len, 0)) < 0) {
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to socket");
+    }
+    
+    if (DEBUG) fprintf(stderr, "sent: %s \n", usr_name);
+   printf("Inserisci una password (minimo 8 massimo 32 caratteri)\n"); scanf("%s",usr_pwd);   //---->INSERISCI CONTROLLI
+   while ( (ret = send(socket_desc, usr_pwd, usr_pwd_len, 0)) < 0) {
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to socket");
+    }
+    
+    if (DEBUG) fprintf(stderr, "sent: %s \n", usr_pwd);
+
+
+
+        // read message from the server
+    while ( (recv_bytes = recv(socket_desc, recv_buf, recv_buf_len, 0)) < 0 ) {
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to socket");
+    }
+
+    if (DEBUG){ //fprintf(stderr, "Message of %d bytes received\n", recv_bytes);
+    fprintf(stderr, "%s \n", recv_buf);}
+    recv_buf[recv_bytes] = '\0'; // add string terminator manually!*/
+    if(!old_or_new){if(recv_buf)}else{if}///////////////////////////////////////////////////////////////QUI
+
+    // close the socket
+    ret = close(socket_desc);
+    ERROR_HELPER(ret, "Cannot close socket");
+
+    printf("Answer from server: %s", recv_buf);
+
+    if (DEBUG) fprintf(stderr, "Exiting...\n");
+
+    exit(EXIT_SUCCESS);
+}

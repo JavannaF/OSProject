@@ -1,0 +1,37 @@
+int cercaFile(int * file, int modalità, user_t user){
+	char* letto=malloc(32*sizeof(char));
+        char* pass=malloc(32*sizeof(char));
+        int usrname_len= strlen(user.name);
+        int pass_len= strlen(user.password);
+        fgets(letto,32*sizeof(char), file);
+	while(!feof(file)) {
+            if(memcmp(letto,user.name, usrname_len)==0){
+		fgets(pass,32*sizeof(char), file);
+                if(memcmp(letto,user.name, pass_len)==0){
+			 printf("Benvenuto %s",user.name); 
+                         return 1;
+                }
+                else {
+                         printf("Password sbagliata");
+                         return 0;
+                }
+            }
+           fgets(pass,32*sizeof(char),file);
+           fgets(letto,32*sizeof(char), file);   
+
+         }
+printf("Non ho trovato corrispondenza col tuo username %s",user.name);
+return 0;}
+
+int main(int argc, char* argv[]){
+    FILE * file=fopen("/home/biar/Desktop/quaglia/user_data.txt","r");
+    if(file==NULL){
+	 printf("impossibile aprire il file!");
+         exit(1);
+	}
+    user_t user;
+    user.name= "margherita";
+    user.password="dolcevita";
+    cercafile(file,0,user);
+  return 0;
+}

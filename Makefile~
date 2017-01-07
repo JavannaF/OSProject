@@ -1,0 +1,15 @@
+CC = gcc -Wall -O0 -g
+LDFLAGS =
+
+all: main client
+
+server: server.c common.h
+	$(CC) -o server server.c $(LDFLAGS)
+
+client: client.c common.h
+	$(CC) -o client client.c $(LDFLAGS)
+
+:phony
+clean:
+	rm -f client server
+

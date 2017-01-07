@@ -1,0 +1,147 @@
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>  // htons() and inet_addr()
+#include <netinet/in.h> // struct sockaddr_in
+#include <sys/socket.h>
+
+#include "common.h"
+/*CHE DEVE FARE IL MIO CLIENT?
+  1.Stabilire una connessione col server e inviare username e password.
+    Se fallisce il login: chiudo la sessione
+    Se fallisce la registrazione, chiedo un altro user_name
+  2.Inviare e messaggi
+  3.Inviare comandi per la lettura, 
+          4. l'archiviazione e 
+          5. la cancellazione dei messaggi 
+
+*/
+int logged(char * PATH, int socket_desc){////////////////////come tenereil conto dell'id del messaggio
+    char * option=(char *) malloc(sizeof(char));
+    while(1){
+    fprintf(stderr, "Se vuoi scrivere un nuovo messaggio premi N, se vuoi leggere un vecchio messaggio premi L, se vuoi cancellarne uno premi C");
+    scanf("%s",option);
+    switch (option){
+        case "N":
+        
+        
+        }
+    
+    
+    
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    }
+int main(int argc, char* argv[]) {
+    
+    int ret;
+    int old_or_new=2;
+    size_t allowed_command_len_min = 5*sizeof(char);
+    size_t allowed_command_len_max = 32*sizeof(char);
+    // variables for handling a socket
+    int socket_desc;
+    struct sockaddr_in server_addr = {0}; // some fields are required to be filled with 0
+
+    // create a socket
+    socket_desc = socket(AF_INET, SOCK_STREAM, 0);
+    ERROR_HELPER(socket_desc, "Could not create socket");
+
+    // set up parameters for the connection
+    server_addr.sin_addr.s_addr = inet_addr(SERVER_ADDRESS);
+    server_addr.sin_family      = AF_INET;
+    server_addr.sin_port        = htons(SERVER_PORT); // don't forget about network byte order!
+//FASE 1: Log_In e Registrazione 
+    // initiate a connection on the socket
+    ret = connect(socket_desc, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
+    ERROR_HELPER(ret, "Could not create connection");
+
+    if (DEBUG) {//CHICK CHECK THIS
+    fprintf(stderr, "Connection established!\n");    
+    printf("Benvenuto! Se sei un nuovo utente premi '0', '1' altrimenti. \n");
+    scanf ("%d",&old_or_new);
+    printf("Benvenuto!");
+    }
+
+    char* recv_buf=(char *) malloc(sizeof(char));
+    size_t recv_buf_len = sizeof(char);
+    int recv_bytes;
+
+    /////////////HANDLE USERNAME AND PASSWORD////////////
+    char* usr_name=(char*)malloc(32*sizeof(char));
+    char* usr_pwd=(char*)malloc(32*sizeof(char));
+    size_t usr_name_len = 32*sizeof(char);
+    size_t usr_pwd_len = 32*sizeof(char);
+    printf("Inserisci uno user name (minimo 8 massimo 32 caratteri)\n"); scanf("%s",usr_name); //---->INSERISCI CONTROLLI 
+    char * PATH=(char*)malloc(strlen(BASE_PATH)+strlen(usr_name));
+    strcpy(PATH,BASE_PATH);
+    while ( (ret = send(socket_desc, usr_name, usr_name_len, 0)) < 0) {
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to socket");
+    }
+    
+    if (DEBUG) fprintf(stderr, "sent: %s \n", usr_name);
+   printf("Inserisci una password (minimo 8 massimo 32 caratteri)\n"); scanf("%s",usr_pwd);   //---->INSERISCI CONTROLLI
+   while ( (ret = send(socket_desc, usr_pwd, usr_pwd_len, 0)) < 0) {
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to socket");
+    }
+    
+    if (DEBUG) fprintf(stderr, "sent: %s \n", usr_pwd);
+
+
+
+        // risposta sul nome---> dice se per lo user può fare il login se è disponibile per il registrando
+    while ( (recv_bytes = recv(socket_desc, recv_buf, recv_buf_len, 0)) < 0 ) {
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to socket");
+    }
+
+    if (DEBUG){ 
+        if(!old_or_new){ //è un utente che vuole registrarsi, voglio che lo username che sceglie non esista tra quelli esistenti. se esistechiudola connessione 
+            if(!memcmp(recv_buf,"0",sizeof(char))){
+                FILE * file=fopen("user_data","a");//modalità append
+                if(file==NULL){
+                fprintf(stderr,"impossibile aprire il file!\n");
+                    exit(1);
+                    }
+                fprintf(file,"%s\n%s",usr_name,usr_pwd);
+                strcat(PATH,usr_name);///////////////////////////CONTROLLA CHESI FACCIA COSì
+                fprintf(stderr,"\nthis is PATH %s\n",PATH);
+                
+                }
+            else fprintf(stderr,"Siamo spiacenti ma lo username da leiscelto è già in uso da un altro utente. Arrivederci\n");}
+        else{
+            if(old_or_new==1) //è un utente che tenta di fare log_in
+                    if(!memcmp(recv_buf,"1",sizeof(char))) {printf("Bentornato %s!\n", usr_name); 
+                        strcat(PATH,usr_name);///////////////////////////CONTROLLA CHESI FACCIA COSì
+                     fprintf(stderr,"\nthis is PATH %s\n",PATH);}
+                    else
+                        fprintf(stderr,"sono spiacente ma lo Username o la password inserite non sono presenti nel sitema. Arrivederci\n %s\n",recv_buf);}
+            
+    fprintf(stderr, "%s \n", recv_buf);}
+    recv_buf[recv_bytes] = '\0'; // add string terminator manually!*/
+
+    
+
+    // close the socket
+    ret = close(socket_desc);
+    ERROR_HELPER(ret, "Cannot close socket");
+
+    printf("Answer from server: %s", recv_buf);
+
+    if (DEBUG) fprintf(stderr, "Exiting...\n");
+
+    exit(EXIT_SUCCESS);
+}
