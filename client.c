@@ -53,7 +53,7 @@ void logged_client(int socket_desc){////////////////////come tenere il conto del
         }
     
     if (DEBUG) fprintf(stderr, "sent: %s \n", oggetto);   
-    fprintf(stderr, "Scrivi il tuomessaggio qui:"); //chiedo il messaggio
+    fprintf(stderr, "Scrivi il tuo messaggio qui:"); //chiedo il messaggio
         scanf("%s",messaggio); 
       while ( (ret = send(socket_desc, messaggio, sizeof(messaggio), 0)) < 0) {
         if (errno == EINTR) continue;
@@ -62,12 +62,12 @@ void logged_client(int socket_desc){////////////////////come tenere il conto del
     
     if (DEBUG) fprintf(stderr, "sent: %s \n", messaggio);            
         break;
-        case "L":
+       /* case "L":
         break;
         case "C":
-        break;
+        break;*/
         }
-    
+    return
     
     }
     
@@ -147,7 +147,7 @@ int main(int argc, char* argv[]) {
 
 
 
-        // risposta sul nome---> dice se per lo user può fare il login se è disponibile per il registrando
+        // risposta sul nome---> dice se per lo user può fare il login se è disponibile per chi si registra
     while ( (recv_bytes = recv(socket_desc, recv_buf, recv_buf_len, 0)) < 0 ) {
         if (errno == EINTR) continue;
         ERROR_HELPER(-1, "Cannot write to socket");

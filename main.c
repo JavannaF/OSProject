@@ -18,10 +18,91 @@
   5.Cancellare messaggi in archivio
 */
 //funzione per cercare lo user in un file
+void logged_server(int socket_desk, char * PATH){
+        //Parte che legge l'opzione
+    messaggio_t* messaggio;
+    messaggio->destinatario=(char*)malloc(32*sizeof(char));
+    messaggio->oggetto=(char*)malloc(64*sizeof(char));
+    messaggio->testo=(char*)malloc(256*sizeof(char));
+     while ( (recv(socket_desc, opzione, opzione_len, 0)) < 0 ) {
+        
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to socket");
+    }
+    if (DEBUG) fprintf(stderr, "opzione ricevuta: %s \n", opzione);
+     switch (option){
+        
+        case "N":
+            while ( (recv(socket_desc, opzione, opzione_len, 0)) < 0 ) {
+        
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to socket");
+    }
+    if (DEBUG) fprintf(stderr, "opzione ricevuta: %s \n", opzione);
+    
+    
+    //----------------RICEVO IL DESTINATARIO-----------------//
+    
+    while ( (recv(socket_desc, messaggio->destinatario, DESTINATARIO_LEN, 0)) < 0 ) {
+        
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to socket");
+    }
+    if (DEBUG) fprintf(stderr, "opzione ricevuta: %s \n", messaggio->destinatario);
+    
+    
+    //------------------RICEVO L'OGGETTO--------------------//
+    
+    while ( (recv(socket_desc, messaggio->oggetto, OGGETTO_LEN, 0)) < 0 ) {
+        
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to socket");
+    }
+    if (DEBUG) fprintf(stderr, "opzione ricevuta: %s \n", messaggio->oggetto);
+       
+        
+        
+     //------------------RICEVO IL TESTO--------------------//       
+    while ( (recv(socket_desc, messaggio->testo, TESTO_LEN, 0)) < 0 ) {
+        
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to socket");
+    }
+    if (DEBUG) fprintf(stderr, "opzione ricevuta: %s \n", messaggio->testo);
+    
+    
+    //-----------ARCHIVIO IL MESSAGGIO--------------------//
+    //---per creare l'id del ricevente leggo il contatore 
+    char * PATH_DESTINATARIO;
+    char * PATH CONTATORE;
+    char* contatore;
+    strcpy(PATH_DESTINATARIO,BASE_PATH);
+    strcat(PATH_DESTINATARIO,messaggio->destinatario);
+    strcpy(PATH_CONTATORE,PATH_DESTINATARIO);
+    strcat(PATH_CONTATORE,"contatore");
+    FILE * contadest= fopen(PATH_CONTATORE,"r");//tengo un contatore dei messagi ricevuti, per dare l'id al nome
+    fscanf(contadest,contatore);                   //e sarà anche il nome del messaggio
+    fclose(PATH_CONTATORE);
+    messaggio->ID=atoi(contatore);
+    FILE * messfile= fopen(PATH_DESTINATARIO,"w");//salvo un messaggio in un file diverso.
+    fprintf(messfile,"%s\n",messaggio->destinatario);
+    fprintf(messfile,"%s\n",messaggio->oggetto);
+    fprintf(messfile,"%s\n",messaggio->testo);
+    fclose(messfile);
+         break;
+        /*
+        case "L":
+        break;
+        case "C":
+        break;*/
+}
+  return  
+    
+    
+    }
 int cercaFile(FILE * file,user_t user){
         char* letto=(char *)malloc(32*sizeof(char));
         char* pass=(char *)malloc(32*sizeof(char));
-        char* contachar=(char *)malloc(sizeof(char));
         int usrname_len= strlen(user.name);
         int pass_len= strlen(user.password);
         fgets(letto,32*sizeof(char), file);
@@ -29,8 +110,6 @@ int cercaFile(FILE * file,user_t user){
             if(memcmp(letto,user.name, strlen(letto)-1)==0){
 		        fgets(pass,32*sizeof(char), file);
                 if(memcmp(pass,user.password, strlen(pass)-1)==0){                   
-                fgets(contachar,sizeof(char), file);
-                user.msg_cont= atoi((const char *)contachar);
 			 //Trova lo username e corrisponde alla password 
              
                          return 1;
@@ -42,8 +121,7 @@ int cercaFile(FILE * file,user_t user){
                 }
             }
             
-           fgets(pass,32*sizeof(char),file);
-           fgets(contachar,sizeof(char), file);  
+           fgets(pass,32*sizeof(char),file); 
            fgets(letto,32*sizeof(char), file);
  
 
@@ -126,15 +204,18 @@ void connection_handler(int socket_desc) {
                 fprintf(stderr,"\nthis is PATH %s\n",PATH);
                 fclose(file);
                 logged="1";
-                
+                logged_server(socket_desk, PATH);
                 }
         else logged="0"; }//lo username è già stato usato
     else{//è un utente che vuole loggarsi
         if(ceono==1) logged="1";
+        logged_server(socket_desk,PATH);
         else logged="0";
     }
     free(old_or_new);
+    
     //---------Informo il client del mio risultato;-----------------------//
+    
     while ( (ret = send(socket_desc,logged, 1, 0)) < 0 ) {
         if (errno == EINTR) continue;
         ERROR_HELPER(-1, "Cannot write to the socket");
@@ -142,45 +223,13 @@ void connection_handler(int socket_desc) {
     fprintf(stderr, "sent: %s \n", logged);
     
    //-----------Cosa vuole fare il mio client? Scrivere Leggere o Cancellare------------//
+   
+   
    char * opzione=(char *)malloc(sizeof(char));
    int opzione_len=sizeof(char);
    
     
-    //Parte che legge l'opzione
-    /*messaggio_t* messaggio;
-     while ( (recv_bytes = recv(socket_desc, opzione, opzione_len, 0)) < 0 ) {
-        
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to socket");
-    }
-    if (DEBUG) fprintf(stderr, "opzione ricevuta: %s \n", opzione);
-     switch (option){
-        
-        case "N":
-            while ( (recv_bytes = recv(socket_desc, opzione, opzione_len, 0)) < 0 ) {
-        
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to socket");
-    }
-    if (DEBUG) fprintf(stderr, "opzione ricevuta: %s \n", opzione);
-    while ( (recv_bytes = recv(socket_desc, opzione, opzione_len, 0)) < 0 ) {
-        
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to socket");
-    }
-    if (DEBUG) fprintf(stderr, "opzione ricevuta: %s \n", opzione);
-    while ( (recv_bytes = recv(socket_desc, opzione, opzione_len, 0)) < 0 ) {
-        
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to socket");
-    }
-    if (DEBUG) fprintf(stderr, "opzione ricevuta: %s \n", opzione);
-        break;
-        case "L":
-        break;
-        case "C":
-        break;
-}*/
+
 
     //libero la memoria allocata
     
