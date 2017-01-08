@@ -19,6 +19,7 @@
 typedef struct {
   char * name;
   char * password;
+  int msg_cont;
 
 }user_t;
 
@@ -29,5 +30,5 @@ typedef struct {
    char testo[1024];
 }messaggio_t;
 
-char* cercaFile(FILE * file,user_t user);
+int cercaFile(FILE * file,user_t user);
 #endif

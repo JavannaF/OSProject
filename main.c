@@ -18,9 +18,10 @@
   5.Cancellare messaggi in archivio
 */
 //funzione per cercare lo user in un file
-char* cercaFile(FILE * file,user_t user){
-        char* letto=malloc(32*sizeof(char));
-        char* pass=malloc(32*sizeof(char));
+int cercaFile(FILE * file,user_t user){
+        char* letto=(char *)malloc(32*sizeof(char));
+        char* pass=(char *)malloc(32*sizeof(char));
+        char* contachar=(char *)malloc(sizeof(char));
         int usrname_len= strlen(user.name);
         int pass_len= strlen(user.password);
         fgets(letto,32*sizeof(char), file);
@@ -28,31 +29,37 @@ char* cercaFile(FILE * file,user_t user){
             if(memcmp(letto,user.name, strlen(letto)-1)==0){
 		        fgets(pass,32*sizeof(char), file);
                 if(memcmp(pass,user.password, strlen(pass)-1)==0){                   
-
+                fgets(contachar,sizeof(char), file);
+                user.msg_cont= atoi((const char *)contachar);
 			 //Trova lo username e corrisponde alla password 
-                         return "1";
+             
+                         return 1;
                 }
                 else {
                          //Trova lo username ma la password è sbagliata
                          
-                         return "0";
+                         return 2;
                 }
             }
             
            fgets(pass,32*sizeof(char),file);
-           fgets(letto,32*sizeof(char), file);   
+           fgets(contachar,sizeof(char), file);  
+           fgets(letto,32*sizeof(char), file);
+ 
 
          } free(letto); free(pass);
     //Non trova lo username   
-    return "0";
+    return 0;
 }
 
 //1---stabilire una connessione
 void connection_handler(int socket_desc) {    
       
     int ret;
+     char * PATH=(char*)malloc(strlen(BASE_PATH)+32*sizeof(char));
+    strcpy(PATH,BASE_PATH);
     //char* allowed_command = SERVER_COMMAND;//COMMON.H
-    size_t allowed_command_len_min = 5*sizeof(char);
+    size_t allowed_command_len_min = 5*sizeof(char);//------> RICORDA DI AGGIUNGERE I CONTROLLI!!!!!!!
     size_t allowed_command_len_max = 32*sizeof(char);
     char* send_buf=(char*) malloc(2*sizeof(char));
     int buf_len=256*sizeof(char);
@@ -63,10 +70,22 @@ void connection_handler(int socket_desc) {
     size_t server_message_len = 256*sizeof(char);
  
     //FASE 1: Log_In e Registrazione 
+    //Dati riguardanti lo user: alloco lo spazio e metto a 0 il contatore di default
     user_t* user=(user_t *) malloc(sizeof(user_t));
     user->name= (char*) malloc(32*sizeof(char));
     user->password= (char*) malloc(32*sizeof(char));
-   /* //check this*/
+    user->msg_cont=0;
+    char * old_or_new= (char *) malloc(sizeof(char));
+    //-------RICEVO L'INFORMAZIONE: Se Registrazione o Log IN---------------//
+    while ( (recv_bytes = recv(socket_desc, old_or_new, sizeof(old_or_new), 0)) < 0 ) {
+        
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to socket");
+    }
+    if (DEBUG) fprintf(stderr, "log 1 or new 0: %s \n", old_or_new);//check_this      
+    
+    
+    //-------RICEVO USERNAME E PASSWORD-----------//
     while ( (recv_bytes = recv(socket_desc, user->name, 32*sizeof(char), 0)) < 0 ) {
         
         if (errno == EINTR) continue;
@@ -81,35 +100,54 @@ void connection_handler(int socket_desc) {
     
     if (DEBUG) fprintf(stderr, "username received: %s \n", user->password);//check_this
     
+    
     FILE * file=fopen("user_data","r");
     if(file==NULL){
 	 fprintf(stderr,"impossibile aprire il file!\n");
          exit(1);
 	}
    
-   char * ceono=cercaFile(file,*user);
-   fprintf(stderr, "%s", ceono);
+   int ceono=cercaFile(file,*user);
+   
+   fprintf(stderr, "C'è o no: %d", ceono);
+   fclose(file);
+   char *logged="0";//serve per avvisare il client se può loggarsi o no
+   if(!memcmp(old_or_new,"0", sizeof(char))){ //è un utente che vuole registrarsi
+       if(!ceono){ //lo username è disponibile
+        
+                FILE * file=fopen("user_data","a");//apro il modalità append aggiungo nome e pwd
+                if(file==NULL){
+                fprintf(stderr,"impossibile aprire il file!\n");
+                    exit(1);
+                    }
+                fprintf(file,"%s\n%s\n0\n",user->name,user->password);
+                
+                strcat(PATH,user->name);
+                fprintf(stderr,"\nthis is PATH %s\n",PATH);
+                fclose(file);
+                logged="1";
+                
+                }
+        else logged="0"; }//lo username è già stato usato
+    else{//è un utente che vuole loggarsi
+        if(ceono==1) logged="1";
+        else logged="0";
+    }
+    free(old_or_new);
+    //---------Informo il client del mio risultato;-----------------------//
+    while ( (ret = send(socket_desc,logged, 1, 0)) < 0 ) {
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to the socket");
+    }
+    fprintf(stderr, "sent: %s \n", logged);
+    
+   //-----------Cosa vuole fare il mio client? Scrivere Leggere o Cancellare------------//
    char * opzione=(char *)malloc(sizeof(char));
    int opzione_len=sizeof(char);
    
-    while ( (ret = send(socket_desc,ceono , 1, 0)) < 0 ) {
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to the socket");
-    }
-    fprintf(stderr, "sent: %s \n", ceono);
-    if (DEBUG) fprintf(stderr, "Message of %d bytes sent\n", ret);
-    
-    
-     
-    while ( (ret = send(socket_desc,ceono , 1, 0)) < 0 ) {
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to the socket");
-    }
-    fprintf(stderr, "sent: %s \n", ceono);
-    if (DEBUG) fprintf(stderr, "Message of %d bytes sent\n", ret);
     
     //Parte che legge l'opzione
-    messaggio_t* messaggio;
+    /*messaggio_t* messaggio;
      while ( (recv_bytes = recv(socket_desc, opzione, opzione_len, 0)) < 0 ) {
         
         if (errno == EINTR) continue;
@@ -142,7 +180,13 @@ void connection_handler(int socket_desc) {
         break;
         case "C":
         break;
-}
+}*/
+
+    //libero la memoria allocata
+    
+    free(user->name);
+    free(user->password);
+    free(user);
     // close socket
     ret = close(socket_desc);
     ERROR_HELPER(ret, "Cannot close socket for incoming connection");
