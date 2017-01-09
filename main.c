@@ -17,10 +17,42 @@
   4.Lettura messaggi archiviati
   5.Cancellare messaggi in archivio
 */
-//funzione per cercare lo user in un file
+//funzione per spedire (gestisce invii parziali)
+int spedisci(char*buf, int dim, int socket_desc){	
+    int spediti;
+    int recv_bytes=0;
+    while (recv_bytes<dim) {
+    spediti = send(socket_desc, buf+ recv_bytes, dim - recv_bytes, 0);
+    if (spediti < 0 && errno == EINTR) continue;
+    if (spediti < 0) return -1;//error: return -1
+    recv_bytes += spediti;
+    
+    
+    //if (recv_bytes == 0)break;
+}
+ return spediti;   
+}
+//funzione per ricevere (gestisce invii parziali)
+int ricevi(char *buf, int dim, int socket_desc){
+    int recv_bytes=0;
+    int letti=0;
+    int flag=1;
+    while (flag) {
+    letti = recv(socket_desc, buf + recv_bytes, dim - recv_bytes, 0);
+    if (letti < 0 && errno == EINTR) continue;
+    if (letti < 0) return -1;//error: return -1
+    recv_bytes += letti;
+    if (recv_bytes > 0 && (buf[recv_bytes - 1] == '\0' || recv_bytes>32*sizeof(char))) {
+    flag = 0;
+    }
+    if (recv_bytes == 0)break;
+    }
+    return recv_bytes;
+    }
+//Funzione che si occupa degli utenti loggati
 void logged_server(int socket_desc, char * PATH){
-       //-----------Cosa vuole fare il mio client? Scrivere Leggere o Cancellare------------//
-   
+       //-----------Cosa vuole fare il mio client? Scrivere Leggere o Cancellare-----------//
+    
    
    char * opzione=(char *)malloc(2*sizeof(char));
    int opzione_len=sizeof(char);
@@ -30,22 +62,11 @@ void logged_server(int socket_desc, char * PATH){
     messaggio->destinatario=(char*)malloc(32*sizeof(char));
     messaggio->oggetto=(char*)malloc(64*sizeof(char));
     messaggio->testo=(char*)malloc(256*sizeof(char));
-    int letti;
-    int flag = 1;
-    int recv_bytes=0;
-    while (flag) {
-    letti = recv(socket_desc, opzione + recv_bytes, opzione_len - recv_bytes, 0);
-    if (letti < 0 && errno == EINTR) continue;
-    if (letti < 0) ERROR_HELPER(-1, "Cannot write to socket");//error: return -1
-    recv_bytes += letti;
-    if (recv_bytes > 0 && (opzione[recv_bytes - 1] == '\0' || recv_bytes>32*sizeof(char))) {
-    flag = 0;
-    }
-    if (recv_bytes == 0)break;
-    }
+    ricevi(opzione, opzione_len+1, socket_desc);
+
          //while(!memcmp(opzione[letti-1],"\0")){letti=(read(socket_desc, opzione, opzione_len))}
      
-    opzione[1]='\0';
+   
     if (DEBUG) fprintf(stderr, "opzione ricevuta: %s\n", opzione);
     int opzioneint=atoi(opzione);
     int ret;
@@ -55,50 +76,42 @@ void logged_server(int socket_desc, char * PATH){
     
     //----------------RICEVO IL DESTINATARIO-----------------//
     
-    while ( ret=(recv(socket_desc, messaggio->destinatario, DESTINATARIO_LEN, 0)) < 0 ) {
-        
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to socket");
-    }
-    ;
+    ret=ricevi(messaggio->destinatario, DESTINATARIO_LEN, socket_desc);
+   
     if (DEBUG) fprintf(stderr, "destinatario: %s %d\n", messaggio->destinatario,ret);
     
     
     //------------------RICEVO L'OGGETTO--------------------//
     
-    while ( ret=(recv(socket_desc, messaggio->oggetto, OGGETTO_LEN, 0)) < 0 ) {
-        
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to socket");
-    }
+    ret=ricevi(messaggio->oggetto, OGGETTO_LEN, socket_desc);
    // messaggio->oggetto[ret]='\0';
     if (DEBUG) fprintf(stderr, "oggetto: %s\n", messaggio->oggetto);
 
         
         
      //------------------RICEVO IL TESTO--------------------//       
-    while (ret= (recv(socket_desc, messaggio->testo, TESTO_LEN, 0)) < 0 ) {
-        
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to socket");
-        messaggio->testo[ret]='\0';
-    }
+    ret=ricevi(messaggio->testo, TESTO_LEN+1,socket_desc);
+    if (ret==-1) return;
     if (DEBUG) fprintf(stderr, "messaggio: %s\n", messaggio->testo);
     
     
     //-----------ARCHIVIO IL MESSAGGIO--------------------//
     //---per creare l'id del ricevente leggo il contatore 
-    char * PATH_DESTINATARIO;
-    char * PATH_CONTATORE;
-    char* contatore;
+    char * PATH_DESTINATARIO=(char*)malloc((strlen(BASE_PATH)+strlen(messaggio->destinatario))*sizeof(char));
+    char * PATH_CONTATORE=(char *) malloc((strlen(BASE_PATH)+strlen(messaggio->destinatario)+strlen("/contatore"))*sizeof(char));
+    char* contatore=(char*) malloc(sizeof(char));
     strcpy(PATH_DESTINATARIO,BASE_PATH);
+    strcat(PATH_DESTINATARIO,"/");
     strcat(PATH_DESTINATARIO,messaggio->destinatario);
     strcpy(PATH_CONTATORE,PATH_DESTINATARIO);
-    strcat(PATH_CONTATORE,"contatore");
+    strcat(PATH_CONTATORE,"/contatore");
     FILE * contadest= fopen(PATH_CONTATORE,"r");//tengo un contatore dei messagi ricevuti, per dare l'id al nome
-    fscanf(contadest,"%s",contatore);                   //e sarà anche il nome del messaggio
+    fscanf(contadest,"/%s",contatore);                   //e sarà anche il nome del messaggio
     fclose(contadest);
-    messaggio->ID=atoi(contatore);
+    messaggio->ID=atoi(contatore)+1;
+    snprintf (contatore, sizeof(contatore), "%d", messaggio->ID);
+    strcat(PATH_DESTINATARIO,contatore);
+    fprintf(stderr,"%s\n",PATH_CONTATORE);
     FILE * messfile= fopen(PATH_DESTINATARIO,"w");//salvo un messaggio in un file diverso.
     fprintf(messfile,"%s\n",messaggio->destinatario);
     fprintf(messfile,"%s\n",messaggio->oggetto);

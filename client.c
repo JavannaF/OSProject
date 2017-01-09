@@ -18,35 +18,49 @@
   5. la cancellazione dei messaggi 
 
 */
-int spedisci(char*buf, int dim, int socket_desc){
-	
+//funzione per ricevere (gestisce invii parziali)
+int ricevi(char *buf, int dim, int socket_desc){
+    int recv_bytes=0;
+    int letti=0;
+    int flag=1;
+    while (flag) {
+    letti = recv(socket_desc, buf + recv_bytes, dim - recv_bytes, 0);
+    if (letti < 0 && errno == EINTR) continue;
+    if (letti < 0) return -1;//error: return -1
+    recv_bytes += letti;
+    if (recv_bytes > 0 && (buf[recv_bytes - 1] == '\0' || recv_bytes>32*sizeof(char))) {
+    flag = 0;
+    }
+    if (recv_bytes == 0)break;
+    }
+    return recv_bytes;
+    }
+//funzione per spedire (gestisce invii parziali)
+int spedisci(char*buf, int dim, int socket_desc){	
     int spediti;
     int recv_bytes=0;
     while (recv_bytes<dim) {
     spediti = send(socket_desc, buf+ recv_bytes, dim - recv_bytes, 0);
     if (spediti < 0 && errno == EINTR) continue;
-    if (spediti < 0) ERROR_HELPER(-1, "Cannot write to socket");//error: return -1
+    if (spediti < 0) return -1;//error: return -1
     recv_bytes += spediti;
     
     
-    if (recv_bytes == 0)break;
+    //if (recv_bytes == 0)break;
 }
- return 0;   
+ return spediti;   
 }
 
 void logged_client(int socket_desc){////////////////////come tenere il conto dell'id del messaggio
-    char * option=(char *) malloc(sizeof(char));
+    char * option=(char *) malloc(2*sizeof(char));
     int ret;
-    int option_len=sizeof(char);
+    int option_len=2*sizeof(char);
     while(1){
     fprintf(stderr, "Se vuoi scrivere un nuovo messaggio premi 1, se vuoi leggere un vecchio messaggio premi 2, se vuoi cancellarne uno premi 3,se vuoi uscire premi 0");
     scanf("%s",option);
     if (!memcmp(option, "0", option_len)) break;//L'utente vuole uscire
-    while ( (ret = send(socket_desc, option, option_len, 0)) < 0) {//Mando l'opzione al server
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to socket");
-    }
-    
+    ret = spedisci(option, option_len, socket_desc);
+
     if (DEBUG) fprintf(stderr, "sent: %s \n", option);
         char* nome=(char*)malloc(DESTINATARIO_LEN);
         char* oggetto=(char*)malloc(OGGETTO_LEN);
@@ -56,26 +70,20 @@ void logged_client(int socket_desc){////////////////////come tenere il conto del
         case 1://voglio scrivere un nuovo messaggio
         fprintf(stderr, "A chi vuoi inviare il tuo messaggio?\n");//chiedo il nome
         scanf("%s",nome);
-        spedisci(nome,strlen(nome)+1,socket_desc);
-        if (DEBUG) fprintf(stderr, "sent: %s %d\n", nome,ret);
+        ret=spedisci(nome,strlen(nome)+1,socket_desc);
+        if (DEBUG) fprintf(stderr, "sent: %s %d %d\n", nome,ret,((int)(strlen(nome)+1)));
         fprintf(stderr, "Quale è l'oggetto del tuo messaggio?\n");//chiedo l'oggetto
         scanf("%s",oggetto);
-        while ( (ret = send(socket_desc, oggetto, strlen(oggetto)+1, 0)) < 0) {
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to socket");
-        
-        }
-    
+        ret = spedisci(oggetto, strlen(oggetto)+1, socket_desc);
     if (DEBUG) fprintf(stderr, "sent: %s \n", oggetto);   
     fprintf(stderr, "Scrivi il tuo messaggio qui:\n"); //chiedo il messaggio
-    char * temp=NULL;
-    fgets(messaggio,TESTO_LEN,stdin);
-      while ( (ret = send(socket_desc, messaggio, strlen(messaggio)+1, 0)) < 0) {
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to socket");
-        }
+    char * temp;
     
-    if (DEBUG) fprintf(stderr, "sent: %s \n", messaggio);            
+    fgets(messaggio,TESTO_LEN,stdin);
+    fgets(messaggio,TESTO_LEN,stdin);  
+    ret=spedisci(messaggio, strlen(messaggio)+1,socket_desc);
+    if (DEBUG) fprintf(stderr, "sent: %s \n", messaggio);   
+             
         break;
        /* case "L":
         break;
