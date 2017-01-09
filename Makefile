@@ -3,8 +3,8 @@ LDFLAGS =
 
 all: server client
 
-server: server.c common.h
-	$(CC) -o server server.c $(LDFLAGS)
+server: main.c common.h
+	$(CC) -o server main.c $(LDFLAGS)
 
 client: client.c common.h
 	$(CC) -o client client.c $(LDFLAGS)

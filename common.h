@@ -15,7 +15,7 @@
 #define SERVER_ADDRESS  "127.0.0.1"
 #define SERVER_COMMAND  "0"
 #define SERVER_PORT     2015
-#define BASE_PATH        "/home/biar/Desktop/quaglia/"
+#define BASE_PATH        "/home/leaf/Desktop/javanna/OSProject/"
 #define DESTINATARIO_LEN  32*sizeof(char)
 #define OGGETTO_LEN       64
 #define TESTO_LEN         256

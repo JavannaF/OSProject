@@ -94,7 +94,7 @@ int logged_server(int socket_desc, char * PATH){
         
      //------------------RICEVO IL TESTO--------------------//       
     ret=ricevi(messaggio->testo, TESTO_LEN+1,socket_desc);
-    if (ret==-1) return;
+    if (ret==-1) return -1;
     if (DEBUG) fprintf(stderr, "messaggio: %s\n", messaggio->testo);
     
     
@@ -128,7 +128,7 @@ int logged_server(int socket_desc, char * PATH){
     fprintf(messfile,"%s\n",messaggio->oggetto);
     fprintf(messfile,"%s\n",messaggio->testo);
     fclose(messfile);
-         break;
+    break;
         /*
         case "L":
         break;
@@ -140,47 +140,47 @@ int logged_server(int socket_desc, char * PATH){
     
     }
 int cercaFile(FILE * file,user_t user){
-        char* letto=(char *)malloc(32*sizeof(char));
-        char* pass=(char *)malloc(32*sizeof(char));
-        int usrname_len= strlen(user.name);
-        int pass_len= strlen(user.password);
-        fgets(letto,32*sizeof(char), file);
-        fprintf(stderr,"letto:%s len:%d\n",letto,(int)strlen(letto));
-        fprintf(stderr,"username:%s len:%d\n",user.name,(int)strlen(user.name));
-	    while(!feof(file)) {
-            if(!memcmp(letto, user.name, strlen(letto)-1)){
-                fprintf(stderr,"letto:%s usrnm:%s risultato:%d\n",letto,user.name,memcmp(letto,user.name, strlen(letto)-1));
-		        fgets(pass,32*sizeof(char), file);
-                if(!memcmp(pass,user.password, strlen(pass)-1)){                   
-			 //Trova lo username e corrisponde alla password 
-             
-                         return 1;
-                         
-                }
-                else {
-                         //Trova lo username ma la password è sbagliata
-                         
-                         return 2;
-                }
-            }
-            
-           fgets(pass,32*sizeof(char),file); 
-           fprintf(stderr,"%s\n",pass);
-           fgets(letto,32*sizeof(char), file);
-        fprintf(stderr,"%s\n",letto);
-        fprintf(stderr,"letto:%s len:%d\n",letto,(int)strlen(letto));
-        fprintf(stderr,"username:%s len:%d\n",user.name,(int)strlen(user.name));
-         } free(letto); free(pass);
+	char* letto=(char *)malloc(32*sizeof(char));
+	char* pass=(char *)malloc(32*sizeof(char));
+	int usrname_len= strlen(user.name);
+	int pass_len= strlen(user.password);
+	fgets(letto,32*sizeof(char), file);
+	fprintf(stderr,"letto:%s len:%d\n",letto,(int)strlen(letto));
+	fprintf(stderr,"username:%s len:%d\n",user.name,(int)strlen(user.name));
+	while(!feof(file)) {
+		if(!memcmp(letto, user.name, strlen(letto)-1)){
+			printf("trovato username\n");
+			fprintf(stderr,"1 letto:%s usrnm:%s risultato:%d\n",letto,user.name,memcmp(letto,user.name, strlen(letto)-1));
+			fgets(pass,32*sizeof(char), file);
+			if(!memcmp(pass,user.password, strlen(pass)-1)){                   
+				//Trova lo username e corrisponde alla password 
+				printf("trovata password\n");
+				return 1;                         
+			}
+			else {
+				//Trova lo username ma la password è sbagliata
+				printf("errata password\n");     
+				return 2;
+			}
+		}
+		fgets(pass,32*sizeof(char),file); 
+		fprintf(stderr,"%s\n",pass);
+		fgets(letto,32*sizeof(char), file);
+		fprintf(stderr,"%s\n",letto);
+		fprintf(stderr,"2 letto:%s| len:%d\n",letto,(int)strlen(letto));
+		fprintf(stderr,"2 username:%s| len:%d\n",user.name,(int)strlen(user.name));
+    } 
+    free(letto); free(pass);
     //Non trova lo username   
+    printf("non c'è l'username\n");
     return 0;
 }
 
 //1---stabilire una connessione
-void connection_handler(int socket_desc) {    
-      
+void connection_handler(int socket_desc) {
     int ret;
-     char * PATH=(char*)malloc(strlen(BASE_PATH)+32*sizeof(char));
-    strcpy(PATH,BASE_PATH);
+    char PATH [0];
+    //strcpy(PATH,BASE_PATH);
     char* allowed_command = SERVER_COMMAND;//COMMON.H
     size_t allowed_command_len_min = 5*sizeof(char);//------> RICORDA DI AGGIUNGERE I CONTROLLI!!!!!!!
     size_t allowed_command_len_max = 32*sizeof(char);
@@ -201,7 +201,6 @@ void connection_handler(int socket_desc) {
     char * old_or_new= (char *) malloc(sizeof(char));
     //-------RICEVO L'INFORMAZIONE: Se Registrazione o Log IN---------------//
     while ( (recv_bytes = recv(socket_desc, old_or_new, sizeof(old_or_new), 0)) < 0 ) {
-        
         if (errno == EINTR) continue;
         ERROR_HELPER(-1, "Cannot write to socket");
     }
@@ -209,8 +208,7 @@ void connection_handler(int socket_desc) {
     
     
     //-------RICEVO USERNAME E PASSWORD-----------//
-    while ( (recv_bytes = recv(socket_desc, user->name, 32*sizeof(char), 0)) < 0 ) {
-        
+    while ( (recv_bytes = recv(socket_desc, user->name, 32*sizeof(char), 0)) < 0 ) {        
         if (errno == EINTR) continue;
         ERROR_HELPER(-1, "Cannot write to socket");
     }
@@ -226,71 +224,90 @@ void connection_handler(int socket_desc) {
     
     FILE * file=fopen("user_data","r");
     if(file==NULL){
-	 fprintf(stderr,"impossibile aprire il file!\n");
-         exit(1);
+		fprintf(stderr,"impossibile aprire il file!\n");
+		exit(1);
 	}
    
    int ceono=cercaFile(file,*user);
    
-   fprintf(stderr, "C'è o no: %d", ceono);
+   fprintf(stderr, "C'è o no: %d\n", ceono);
    fclose(file);
    char *logged=(char*) malloc(sizeof(char));//serve per avvisare il client se può loggarsi o no
    if(!memcmp(old_or_new,"0", sizeof(char))){ //è un utente che vuole registrarsi
-       if(!ceono){ //lo username è disponibile
-        
-                FILE * file=fopen("user_data","a");//apro il modalità append aggiungo nome e pwd
-                if(file==NULL){
-                fprintf(stderr,"impossibile aprire il file!\n");
-                    exit(1);
-                    }
-                fprintf(file,"%s\n%s\n0\n",user->name,user->password);
-                fclose(file);
-                strcat(PATH,user->name);
-                mkdir(PATH);
-                strcat(PATH,"/contatore");
-                fprintf(stderr,"\nthis is PATH %s\n",PATH);
-                FILE * contatore=fopen("giostra/contatore","w");
-                    
-                      //  if(file==NULL){
-                        //fprintf(stderr,"impossibile aprire il file!\n");
-                          //  exit(1);
-                        //}   
-                fclose(contatore);
-                
-                logged="1";
-                
-                    while ( (ret = send(socket_desc,logged, 1, 0)) < 0 ) {
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to the socket");
-        logged_server(socket_desc, PATH);
-    }
-  
-    logged_server(socket_desc, PATH);}
-                
-        else{ logged="0"; 
-                            while ( (ret = send(socket_desc,logged, 1, 0)) < 0 ) {
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to the socket");
-        logged_server(socket_desc, PATH);}
-    }fprintf(stderr, "sent: %s \n", logged);}
+		printf("registrazione\n");
+		if(!ceono){ //lo username è disponibile
+			printf("username disponibile\n");
+			FILE * file=fopen("user_data","a");//apro il modalità append aggiungo nome e pwd
+			if(file==NULL){
+				fprintf(stderr,"impossibile aprire il file!\n");
+				exit(1);
+			}
+			fprintf(file,"%s\n%s\n",user->name,user->password);
+			fclose(file);
+			printf("scrittura sul file fatta\n");
+			//strcat(PATH,user->name);
+			mkdir(PATH);
+			//strcat(PATH,"/contatore.txt");
+			strcat(PATH,"./");
+			strcat(PATH,user->name);
+			strcat(PATH,"/contatore.txt");
+			fprintf(stderr,"\nthis is PATH |%s|\n",PATH);
+			FILE * contatore=fopen(PATH,"w");
+				
+			if(contatore==NULL){
+				fprintf(stderr,"impossibile aprire il file!\n");
+				printf( "Error code opening file: %d\n", errno );
+				printf( "Error opening file: %s\n", strerror( errno ) );
+				exit(1);
+			} 
+			printf("contatore aperto con successo \n");  
+			fclose(contatore);
+
+			logged="1";
+			printf("contatore fatto\n");
+			while ( (ret = send(socket_desc,logged, 1, 0)) < 0 ) {
+				if (errno == EINTR) continue;
+				ERROR_HELPER(-1, "Cannot write to the socket");
+				logged_server(socket_desc, PATH);
+			}
+			printf("chiamo logged_server\n");
+			logged_server(socket_desc, PATH);
+			printf("finito logged_server\n");
+		}
+		else{ 
+			printf("username non disponibile\n");
+			logged="0"; 
+			while ( (ret = send(socket_desc,logged, 1, 0)) < 0 ) {
+				if (errno == EINTR) continue;
+				ERROR_HELPER(-1, "Cannot write to the socket");
+				logged_server(socket_desc, PATH);}
+			}
+		fprintf(stderr, "sent: %s \n", logged);
+	}
     
         //lo username è già stato usato
     else{//è un utente che vuole loggarsi
-        if(ceono==1){ logged="1";
-                while ( (ret = send(socket_desc,logged, 1, 0)) < 0 ) {
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to the socket");
-    }
-    fprintf(stderr, "sent: %s \n", logged);
+		printf("effettuo login\n");
+        if(ceono==1){ 
+			printf("username presente\n");
+			logged="1";
+			while ( (ret = send(socket_desc,logged, 1, 0)) < 0 ) {
+				if (errno == EINTR) continue;
+				ERROR_HELPER(-1, "Cannot write to the socket");
+			}
+			fprintf(stderr, "sent: %s \n", logged);
     
-        logged_server(socket_desc,PATH);}
-        else{ logged="0";
-                            while ( (ret = send(socket_desc,logged, 1, 0)) < 0 ) {
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to the socket");
-    }
-    fprintf(stderr, "sent: %s \n", logged);}
-    }
+			logged_server(socket_desc,PATH);
+		}
+		else{ 
+			printf("username assente\n");
+			logged="0";
+			while ( (ret = send(socket_desc,logged, 1, 0)) < 0 ) {
+				if (errno == EINTR) continue;
+				ERROR_HELPER(-1, "Cannot write to the socket");
+			}
+			fprintf(stderr, "sent: %s \n", logged);}
+	}
     free(old_or_new);
     
     //---------Informo il client del mio risultato;-----------------------//
@@ -301,7 +318,7 @@ void connection_handler(int socket_desc) {
 
 
     //libero la memoria allocata
-    
+    printf("libero memoria\n");
     free(user->name);
     free(user->password);
     free(user);
@@ -310,6 +327,7 @@ void connection_handler(int socket_desc) {
     ERROR_HELPER(ret, "Cannot close socket for incoming connection");
 
     free(recv_buf);
+    printf("fine libero memoria\n");
 }
 
 
@@ -318,6 +336,7 @@ void connection_handler(int socket_desc) {
 
 // --------------------------------------------------------------------------------------------
 int main(int argc, char* argv[]) {
+	printf("sono il main\n");
     int ret;
 
     int socket_desc, client_desc;
