@@ -50,7 +50,7 @@ int ricevi(char *buf, int dim, int socket_desc){
     return recv_bytes;
     }
 //Funzione che si occupa degli utenti loggati
-void logged_server(int socket_desc, char * PATH){
+int logged_server(int socket_desc, char * PATH){
        //-----------Cosa vuole fare il mio client? Scrivere Leggere o Cancellare-----------//
     
    
@@ -77,7 +77,10 @@ void logged_server(int socket_desc, char * PATH){
     //----------------RICEVO IL DESTINATARIO-----------------//
     
     ret=ricevi(messaggio->destinatario, DESTINATARIO_LEN, socket_desc);
-   
+    user_t destinatario;
+    destinatario.name=messaggio->destinatario;
+    FILE* utenti=fopen("user_data","r");
+    if(!cercaFile(utenti,destinatario)) {fprintf(stderr,"something gone wrong");return-1;}
     if (DEBUG) fprintf(stderr, "destinatario: %s %d\n", messaggio->destinatario,ret);
     
     
@@ -101,18 +104,26 @@ void logged_server(int socket_desc, char * PATH){
     char * PATH_CONTATORE=(char *) malloc((strlen(BASE_PATH)+strlen(messaggio->destinatario)+strlen("/contatore"))*sizeof(char));
     char* contatore=(char*) malloc(sizeof(char));
     strcpy(PATH_DESTINATARIO,BASE_PATH);
-    strcat(PATH_DESTINATARIO,"/");
+    //strcat(PATH_DESTINATARIO,"/");
     strcat(PATH_DESTINATARIO,messaggio->destinatario);
     strcpy(PATH_CONTATORE,PATH_DESTINATARIO);
     strcat(PATH_CONTATORE,"/contatore");
     FILE * contadest= fopen(PATH_CONTATORE,"r");//tengo un contatore dei messagi ricevuti, per dare l'id al nome
-    fscanf(contadest,"/%s",contatore);                   //e sarà anche il nome del messaggio
+    if(contadest==NULL) return -1;            //e sarà anche il nome del messaggio
+    fscanf(contadest,"%s",contatore); 
     fclose(contadest);
-    messaggio->ID=atoi(contatore)+1;
-    snprintf (contatore, sizeof(contatore), "%d", messaggio->ID);
+    messaggio->ID=atoi(contatore)+1;  
+    fprintf(stderr,"contatore: %s\n",contatore);
+    contadest= fopen(PATH_CONTATORE,"w");//tengo un contatore dei messagi ricevuti, per dare l'id al nome
+    if(contadest==NULL) return -1;  
+    fprintf(contadest,"%d",messaggio->ID);          //e sarà anche il nome del messaggio
+    fclose(contadest);
+    snprintf (contatore, sizeof(contatore), "/%d", messaggio->ID);
+    fprintf(stderr,"contatore: %s\n",contatore);
     strcat(PATH_DESTINATARIO,contatore);
-    fprintf(stderr,"%s\n",PATH_CONTATORE);
+    fprintf(stderr,"%s\n",PATH_DESTINATARIO);
     FILE * messfile= fopen(PATH_DESTINATARIO,"w");//salvo un messaggio in un file diverso.
+    if (messfile==NULL) return -1;
     fprintf(messfile,"%s\n",messaggio->destinatario);
     fprintf(messfile,"%s\n",messaggio->oggetto);
     fprintf(messfile,"%s\n",messaggio->testo);
@@ -124,7 +135,7 @@ void logged_server(int socket_desc, char * PATH){
         case "C":
         break;*/
 }
-  return  ;
+  return 0  ;
     
     
     }
@@ -134,13 +145,17 @@ int cercaFile(FILE * file,user_t user){
         int usrname_len= strlen(user.name);
         int pass_len= strlen(user.password);
         fgets(letto,32*sizeof(char), file);
+        fprintf(stderr,"letto:%s len:%d\n",letto,(int)strlen(letto));
+        fprintf(stderr,"username:%s len:%d\n",user.name,(int)strlen(user.name));
 	    while(!feof(file)) {
-            if(memcmp(letto,user.name, strlen(letto)-1)==0){
+            if(!memcmp(letto, user.name, strlen(letto)-1)){
+                fprintf(stderr,"letto:%s usrnm:%s risultato:%d\n",letto,user.name,memcmp(letto,user.name, strlen(letto)-1));
 		        fgets(pass,32*sizeof(char), file);
-                if(memcmp(pass,user.password, strlen(pass)-1)==0){                   
+                if(!memcmp(pass,user.password, strlen(pass)-1)){                   
 			 //Trova lo username e corrisponde alla password 
              
                          return 1;
+                         
                 }
                 else {
                          //Trova lo username ma la password è sbagliata
@@ -150,9 +165,11 @@ int cercaFile(FILE * file,user_t user){
             }
             
            fgets(pass,32*sizeof(char),file); 
+           fprintf(stderr,"%s\n",pass);
            fgets(letto,32*sizeof(char), file);
- 
-
+        fprintf(stderr,"%s\n",letto);
+        fprintf(stderr,"letto:%s len:%d\n",letto,(int)strlen(letto));
+        fprintf(stderr,"username:%s len:%d\n",user.name,(int)strlen(user.name));
          } free(letto); free(pass);
     //Non trova lo username   
     return 0;
@@ -167,7 +184,7 @@ void connection_handler(int socket_desc) {
     char* allowed_command = SERVER_COMMAND;//COMMON.H
     size_t allowed_command_len_min = 5*sizeof(char);//------> RICORDA DI AGGIUNGERE I CONTROLLI!!!!!!!
     size_t allowed_command_len_max = 32*sizeof(char);
-    char* send_buf=(char*) malloc(2*sizeof(char));
+
     int buf_len=256*sizeof(char);
     // receive command from client
     char* recv_buf=(char*) malloc(256*sizeof(char));
@@ -204,7 +221,7 @@ void connection_handler(int socket_desc) {
         ERROR_HELPER(-1, "Cannot write to socket");
     }
     
-    if (DEBUG) fprintf(stderr, "username received: %s \n", user->password);//check_this
+    if (DEBUG) fprintf(stderr, "password received: %s \n", user->password);//check_this
     
     
     FILE * file=fopen("user_data","r");
@@ -227,10 +244,19 @@ void connection_handler(int socket_desc) {
                     exit(1);
                     }
                 fprintf(file,"%s\n%s\n0\n",user->name,user->password);
-                
-                strcat(PATH,user->name);
-                fprintf(stderr,"\nthis is PATH %s\n",PATH);
                 fclose(file);
+                strcat(PATH,user->name);
+                mkdir(PATH);
+                strcat(PATH,"/contatore");
+                fprintf(stderr,"\nthis is PATH %s\n",PATH);
+                FILE * contatore=fopen("giostra/contatore","w");
+                    
+                      //  if(file==NULL){
+                        //fprintf(stderr,"impossibile aprire il file!\n");
+                          //  exit(1);
+                        //}   
+                fclose(contatore);
+                
                 logged="1";
                 
                     while ( (ret = send(socket_desc,logged, 1, 0)) < 0 ) {
@@ -238,10 +264,17 @@ void connection_handler(int socket_desc) {
         ERROR_HELPER(-1, "Cannot write to the socket");
         logged_server(socket_desc, PATH);
     }
-    fprintf(stderr, "sent: %s \n", logged);
+  
+    logged_server(socket_desc, PATH);}
+                
+        else{ logged="0"; 
+                            while ( (ret = send(socket_desc,logged, 1, 0)) < 0 ) {
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to the socket");
+        logged_server(socket_desc, PATH);}
+    }fprintf(stderr, "sent: %s \n", logged);}
     
-                }
-        else logged="0"; }//lo username è già stato usato
+        //lo username è già stato usato
     else{//è un utente che vuole loggarsi
         if(ceono==1){ logged="1";
                 while ( (ret = send(socket_desc,logged, 1, 0)) < 0 ) {
@@ -251,7 +284,12 @@ void connection_handler(int socket_desc) {
     fprintf(stderr, "sent: %s \n", logged);
     
         logged_server(socket_desc,PATH);}
-        else logged="0";
+        else{ logged="0";
+                            while ( (ret = send(socket_desc,logged, 1, 0)) < 0 ) {
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to the socket");
+    }
+    fprintf(stderr, "sent: %s \n", logged);}
     }
     free(old_or_new);
     
@@ -270,7 +308,7 @@ void connection_handler(int socket_desc) {
     // close socket
     ret = close(socket_desc);
     ERROR_HELPER(ret, "Cannot close socket for incoming connection");
-    free(send_buf);
+
     free(recv_buf);
 }
 
