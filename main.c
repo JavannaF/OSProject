@@ -18,71 +18,86 @@
   5.Cancellare messaggi in archivio
 */
 //funzione per cercare lo user in un file
-void logged_server(int socket_desk, char * PATH){
+void logged_server(int socket_desc, char * PATH){
+       //-----------Cosa vuole fare il mio client? Scrivere Leggere o Cancellare------------//
+   
+   
+   char * opzione=(char *)malloc(2*sizeof(char));
+   int opzione_len=sizeof(char);
+   
         //Parte che legge l'opzione
-    messaggio_t* messaggio;
+    messaggio_t* messaggio=(messaggio_t*) malloc(sizeof(messaggio_t));
     messaggio->destinatario=(char*)malloc(32*sizeof(char));
     messaggio->oggetto=(char*)malloc(64*sizeof(char));
     messaggio->testo=(char*)malloc(256*sizeof(char));
-     while ( (recv(socket_desc, opzione, opzione_len, 0)) < 0 ) {
-        
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to socket");
+    int letti;
+    int flag = 1;
+    int recv_bytes=0;
+    while (flag) {
+    letti = recv(socket_desc, opzione + recv_bytes, opzione_len - recv_bytes, 0);
+    if (letti < 0 && errno == EINTR) continue;
+    if (letti < 0) ERROR_HELPER(-1, "Cannot write to socket");//error: return -1
+    recv_bytes += letti;
+    if (recv_bytes > 0 && (opzione[recv_bytes - 1] == '\0' || recv_bytes>32*sizeof(char))) {
+    flag = 0;
     }
-    if (DEBUG) fprintf(stderr, "opzione ricevuta: %s \n", opzione);
-     switch (option){
-        
-        case "N":
-            while ( (recv(socket_desc, opzione, opzione_len, 0)) < 0 ) {
-        
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to socket");
+    if (recv_bytes == 0)break;
     }
-    if (DEBUG) fprintf(stderr, "opzione ricevuta: %s \n", opzione);
-    
+         //while(!memcmp(opzione[letti-1],"\0")){letti=(read(socket_desc, opzione, opzione_len))}
+     
+    opzione[1]='\0';
+    if (DEBUG) fprintf(stderr, "opzione ricevuta: %s\n", opzione);
+    int opzioneint=atoi(opzione);
+    int ret;
+     switch (opzioneint){
+        
+        case 1:    
     
     //----------------RICEVO IL DESTINATARIO-----------------//
     
-    while ( (recv(socket_desc, messaggio->destinatario, DESTINATARIO_LEN, 0)) < 0 ) {
+    while ( ret=(recv(socket_desc, messaggio->destinatario, DESTINATARIO_LEN, 0)) < 0 ) {
         
         if (errno == EINTR) continue;
         ERROR_HELPER(-1, "Cannot write to socket");
     }
-    if (DEBUG) fprintf(stderr, "opzione ricevuta: %s \n", messaggio->destinatario);
+    ;
+    if (DEBUG) fprintf(stderr, "destinatario: %s %d\n", messaggio->destinatario,ret);
     
     
     //------------------RICEVO L'OGGETTO--------------------//
     
-    while ( (recv(socket_desc, messaggio->oggetto, OGGETTO_LEN, 0)) < 0 ) {
+    while ( ret=(recv(socket_desc, messaggio->oggetto, OGGETTO_LEN, 0)) < 0 ) {
         
         if (errno == EINTR) continue;
         ERROR_HELPER(-1, "Cannot write to socket");
     }
-    if (DEBUG) fprintf(stderr, "opzione ricevuta: %s \n", messaggio->oggetto);
-       
+   // messaggio->oggetto[ret]='\0';
+    if (DEBUG) fprintf(stderr, "oggetto: %s\n", messaggio->oggetto);
+
         
         
      //------------------RICEVO IL TESTO--------------------//       
-    while ( (recv(socket_desc, messaggio->testo, TESTO_LEN, 0)) < 0 ) {
+    while (ret= (recv(socket_desc, messaggio->testo, TESTO_LEN, 0)) < 0 ) {
         
         if (errno == EINTR) continue;
         ERROR_HELPER(-1, "Cannot write to socket");
+        messaggio->testo[ret]='\0';
     }
-    if (DEBUG) fprintf(stderr, "opzione ricevuta: %s \n", messaggio->testo);
+    if (DEBUG) fprintf(stderr, "messaggio: %s\n", messaggio->testo);
     
     
     //-----------ARCHIVIO IL MESSAGGIO--------------------//
     //---per creare l'id del ricevente leggo il contatore 
     char * PATH_DESTINATARIO;
-    char * PATH CONTATORE;
+    char * PATH_CONTATORE;
     char* contatore;
     strcpy(PATH_DESTINATARIO,BASE_PATH);
     strcat(PATH_DESTINATARIO,messaggio->destinatario);
     strcpy(PATH_CONTATORE,PATH_DESTINATARIO);
     strcat(PATH_CONTATORE,"contatore");
     FILE * contadest= fopen(PATH_CONTATORE,"r");//tengo un contatore dei messagi ricevuti, per dare l'id al nome
-    fscanf(contadest,contatore);                   //e sarà anche il nome del messaggio
-    fclose(PATH_CONTATORE);
+    fscanf(contadest,"%s",contatore);                   //e sarà anche il nome del messaggio
+    fclose(contadest);
     messaggio->ID=atoi(contatore);
     FILE * messfile= fopen(PATH_DESTINATARIO,"w");//salvo un messaggio in un file diverso.
     fprintf(messfile,"%s\n",messaggio->destinatario);
@@ -96,7 +111,7 @@ void logged_server(int socket_desk, char * PATH){
         case "C":
         break;*/
 }
-  return  
+  return  ;
     
     
     }
@@ -136,7 +151,7 @@ void connection_handler(int socket_desc) {
     int ret;
      char * PATH=(char*)malloc(strlen(BASE_PATH)+32*sizeof(char));
     strcpy(PATH,BASE_PATH);
-    //char* allowed_command = SERVER_COMMAND;//COMMON.H
+    char* allowed_command = SERVER_COMMAND;//COMMON.H
     size_t allowed_command_len_min = 5*sizeof(char);//------> RICORDA DI AGGIUNGERE I CONTROLLI!!!!!!!
     size_t allowed_command_len_max = 32*sizeof(char);
     char* send_buf=(char*) malloc(2*sizeof(char));
@@ -149,7 +164,7 @@ void connection_handler(int socket_desc) {
  
     //FASE 1: Log_In e Registrazione 
     //Dati riguardanti lo user: alloco lo spazio e metto a 0 il contatore di default
-    user_t* user=(user_t *) malloc(sizeof(user_t));
+    user_t* user=(user_t*)malloc(sizeof(user_t));
     user->name= (char*) malloc(32*sizeof(char));
     user->password= (char*) malloc(32*sizeof(char));
     user->msg_cont=0;
@@ -189,7 +204,7 @@ void connection_handler(int socket_desc) {
    
    fprintf(stderr, "C'è o no: %d", ceono);
    fclose(file);
-   char *logged="0";//serve per avvisare il client se può loggarsi o no
+   char *logged=(char*) malloc(sizeof(char));//serve per avvisare il client se può loggarsi o no
    if(!memcmp(old_or_new,"0", sizeof(char))){ //è un utente che vuole registrarsi
        if(!ceono){ //lo username è disponibile
         
@@ -204,30 +219,33 @@ void connection_handler(int socket_desc) {
                 fprintf(stderr,"\nthis is PATH %s\n",PATH);
                 fclose(file);
                 logged="1";
-                logged_server(socket_desk, PATH);
+                
+                    while ( (ret = send(socket_desc,logged, 1, 0)) < 0 ) {
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to the socket");
+        logged_server(socket_desc, PATH);
+    }
+    fprintf(stderr, "sent: %s \n", logged);
+    
                 }
         else logged="0"; }//lo username è già stato usato
     else{//è un utente che vuole loggarsi
-        if(ceono==1) logged="1";
-        logged_server(socket_desk,PATH);
+        if(ceono==1){ logged="1";
+                while ( (ret = send(socket_desc,logged, 1, 0)) < 0 ) {
+        if (errno == EINTR) continue;
+        ERROR_HELPER(-1, "Cannot write to the socket");
+    }
+    fprintf(stderr, "sent: %s \n", logged);
+    
+        logged_server(socket_desc,PATH);}
         else logged="0";
     }
     free(old_or_new);
     
     //---------Informo il client del mio risultato;-----------------------//
     
-    while ( (ret = send(socket_desc,logged, 1, 0)) < 0 ) {
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to the socket");
-    }
-    fprintf(stderr, "sent: %s \n", logged);
-    
-   //-----------Cosa vuole fare il mio client? Scrivere Leggere o Cancellare------------//
-   
-   
-   char * opzione=(char *)malloc(sizeof(char));
-   int opzione_len=sizeof(char);
-   
+
+
     
 
 

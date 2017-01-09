@@ -17,8 +17,8 @@
 #define SERVER_PORT     2015
 #define BASE_PATH        "/home/biar/Desktop/quaglia/"
 #define DESTINATARIO_LEN  32*sizeof(char)
-#define OGGETTO_LEN       64*sizeof(char)
-#define TESTO_LEN         256*sizeof(char)
+#define OGGETTO_LEN       64
+#define TESTO_LEN         256
 typedef struct {
   char * name;
   char * password;
@@ -27,9 +27,10 @@ typedef struct {
 }user_t;
 
 typedef struct {
-   char destinatario[32];
-   char oggetto[156];
-   char testo[1024];
+   char* destinatario;
+   char* oggetto;
+   char* testo;
+   int ID;
 }messaggio_t;
 
 int cercaFile(FILE * file,user_t user);

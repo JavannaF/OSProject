@@ -18,44 +18,59 @@
   5. la cancellazione dei messaggi 
 
 */
+int spedisci(char*buf, int dim, int socket_desc){
+	
+    int spediti;
+    int recv_bytes=0;
+    while (recv_bytes<dim) {
+    spediti = send(socket_desc, buf+ recv_bytes, dim - recv_bytes, 0);
+    if (spediti < 0 && errno == EINTR) continue;
+    if (spediti < 0) ERROR_HELPER(-1, "Cannot write to socket");//error: return -1
+    recv_bytes += spediti;
+    
+    
+    if (recv_bytes == 0)break;
+}
+ return 0;   
+}
+
 void logged_client(int socket_desc){////////////////////come tenere il conto dell'id del messaggio
     char * option=(char *) malloc(sizeof(char));
     int ret;
     int option_len=sizeof(char);
     while(1){
-    fprintf(stderr, "Se vuoi scrivere un nuovo messaggio premi N, se vuoi leggere un vecchio messaggio premi L, se vuoi cancellarne uno premi C, se vuoi uscire premi E");
+    fprintf(stderr, "Se vuoi scrivere un nuovo messaggio premi 1, se vuoi leggere un vecchio messaggio premi 2, se vuoi cancellarne uno premi 3,se vuoi uscire premi 0");
     scanf("%s",option);
-    if (!memcmp(option, "E", option_len)) break;//L'utente vuole uscire
+    if (!memcmp(option, "0", option_len)) break;//L'utente vuole uscire
     while ( (ret = send(socket_desc, option, option_len, 0)) < 0) {//Mando l'opzione al server
         if (errno == EINTR) continue;
         ERROR_HELPER(-1, "Cannot write to socket");
     }
     
     if (DEBUG) fprintf(stderr, "sent: %s \n", option);
-    switch (option){
-        case "N"://voglio scrivere un nuovo messaggio
-        char nome[32];
-        char oggetto[64];
-        char messaggio[1000];
-        fprintf(stderr, "A chi vuoi inviare il tuo messaggio?");//chiedo il nome
+        char* nome=(char*)malloc(DESTINATARIO_LEN);
+        char* oggetto=(char*)malloc(OGGETTO_LEN);
+        char* messaggio=(char*)malloc(TESTO_LEN);
+        int optionint=atoi(option);
+    switch (optionint){       
+        case 1://voglio scrivere un nuovo messaggio
+        fprintf(stderr, "A chi vuoi inviare il tuo messaggio?\n");//chiedo il nome
         scanf("%s",nome);
-        while ( (ret = send(socket_desc, nome, sizeof(nome), 0)) < 0) {
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to socket");
-        }    
-        if (DEBUG) fprintf(stderr, "sent: %s \n", nome);
-        fprintf(stderr, "Quale è l'oggetto del tuo messaggio?");//chiedo l'oggetto
+        spedisci(nome,strlen(nome)+1,socket_desc);
+        if (DEBUG) fprintf(stderr, "sent: %s %d\n", nome,ret);
+        fprintf(stderr, "Quale è l'oggetto del tuo messaggio?\n");//chiedo l'oggetto
         scanf("%s",oggetto);
-        while ( (ret = send(socket_desc, oggetto, sizeof(oggetto), 0)) < 0) {
+        while ( (ret = send(socket_desc, oggetto, strlen(oggetto)+1, 0)) < 0) {
         if (errno == EINTR) continue;
         ERROR_HELPER(-1, "Cannot write to socket");
         
         }
     
     if (DEBUG) fprintf(stderr, "sent: %s \n", oggetto);   
-    fprintf(stderr, "Scrivi il tuo messaggio qui:"); //chiedo il messaggio
-        scanf("%s",messaggio); 
-      while ( (ret = send(socket_desc, messaggio, sizeof(messaggio), 0)) < 0) {
+    fprintf(stderr, "Scrivi il tuo messaggio qui:\n"); //chiedo il messaggio
+    char * temp=NULL;
+    fgets(messaggio,TESTO_LEN,stdin);
+      while ( (ret = send(socket_desc, messaggio, strlen(messaggio)+1, 0)) < 0) {
         if (errno == EINTR) continue;
         ERROR_HELPER(-1, "Cannot write to socket");
         }
@@ -67,7 +82,7 @@ void logged_client(int socket_desc){////////////////////come tenere il conto del
         case "C":
         break;*/
         }
-    return
+    return;
     
     }
     
@@ -145,7 +160,7 @@ int main(int argc, char* argv[]) {
     
     if (DEBUG) fprintf(stderr, "sent: %s \n", usr_pwd);
 
-
+    memset(recv_buf,0,recv_buf_len);
 
         // risposta sul nome---> dice se per lo user può fare il login se è disponibile per chi si registra
     while ( (recv_bytes = recv(socket_desc, recv_buf, recv_buf_len, 0)) < 0 ) {
@@ -167,7 +182,7 @@ int main(int argc, char* argv[]) {
                 fprintf(stderr,"sono spiacente ma lo Username o la password inserite non sono presenti nel sitema. Arrivederci\n");
                 }
             else{ 
-                fprintf(stderr,"Bentornato %s",usr_name);
+                fprintf(stderr,"Bentornato %s\n",usr_name);
                 logged_client(socket_desc);
                 }
             }

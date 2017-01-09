@@ -43,7 +43,7 @@ int cercaFile(FILE * file,user_t user){
 
 
 int main(int argc,int argv[]){
-    FILE * file=fopen("user_data","r+w");
+    /*FILE * file=fopen("user_data","r+w");
     if(file==NULL){
 	 printf("impossibile aprire il file!\n");
          exit(1);
@@ -51,6 +51,7 @@ int main(int argc,int argv[]){
     user_t user;
     user.name= "prov";
     user.password="cosa";
-    cercaFile(file,user);
+    cercaFile(file,user);*/
+    printf("%li",sizeof(char));
     return 0;
 }
