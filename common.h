@@ -20,6 +20,7 @@
 #define MITTENTE_LEN  32*sizeof(char)
 #define OGGETTO_LEN       64
 #define TESTO_LEN         256
+#define MAX_INBOX         10
 typedef struct {
   char * name;
   char * password;

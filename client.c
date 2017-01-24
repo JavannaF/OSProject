@@ -66,7 +66,7 @@ void logged_client(int socket_desc){
     if (!memcmp(option, "0", option_len)) break;//L'utente vuole uscire
     ret = spedisci(option, option_len, socket_desc);
 
-    if (DEBUG) fprintf(stderr, "sent: %s \n", option);
+    fprintf(stderr, "sent: %s \n", option);
         char* nome=(char*)malloc(DESTINATARIO_LEN);
         char* oggetto=(char*)malloc(OGGETTO_LEN);
         char* messaggio=(char*)malloc(TESTO_LEN);
@@ -76,7 +76,7 @@ void logged_client(int socket_desc){
         fprintf(stderr, "A chi vuoi inviare il tuo messaggio?\n");//chiedo il nome
         fgets(nome,DESTINATARIO_LEN,stdin);
         ret=spedisci(nome,strlen(nome)+1,socket_desc);
-        if (DEBUG) fprintf(stderr, "sent: %s %d %d\n", nome,ret,((int)(strlen(nome)+1)));
+        fprintf(stderr, "sent: %s quanti byte mando(teminatore + a capo)%d quanty byte è lungo il nome(a capo)%d\n", nome,ret,((int)(strlen(nome))));
         fprintf(stderr, "Quale è l'oggetto del tuo messaggio? \n");//chiedo l'oggetto
         fgets(oggetto,OGGETTO_LEN,stdin);
         ret = spedisci(oggetto, strlen(oggetto)+1, socket_desc);
@@ -89,27 +89,30 @@ void logged_client(int socket_desc){
              
         break;
        case 2:
-       char id[5];
+
+       fprintf(stderr,"Quale messsaggio desideri leggere? Digita qui l'id:");
+       char id[5]={0};
        char presenza_id;
-       fprintf("Quale messsaggio desideri leggere? Digita qui l'id:")
-       fscanf("%s",(char*)id,stdin);
-       ret = spedisci((char *)id, sizeof(5*char), socket_desc, )
-        ERROR_HELPER(-1, "Cannot write to socket");
-        fprintf(stderr,"ID manadato=%s",(char *)id); 
-        ret = ricevi(&presenza_id, sizeof(char), socket_desc);
-        if(ret<0 fprintf(stderr,"Errori col mittente");
-        if(!memcmp(&presenza_id,"1",sizeof(char))){
+       fgets((char*)id,5*sizeof(char),stdin);
+       ret = spedisci((char *)id, 6*sizeof(char), socket_desc);
+        if(ret==-1) fprintf(stderr,"ERRORE\n");
+        fprintf(stderr,"ID mandato= %s\n",(char *)id); 
+        ret = ricevi(&presenza_id, 2*sizeof(char), socket_desc);
+        if(ret<0) fprintf(stderr,"Errori col mittente");
+        fprintf(stderr,"presenza id ricevuta %s\n",&presenza_id);
+        if(!memcmp(&presenza_id,"1",2*sizeof(char))){
         ret = ricevi(nome , MITTENTE_LEN, socket_desc);
-        if(ret<0 fprintf(stderr,"Errori col mittente");
-        fprintf(stderr,"Mittente: %s\n",(char *)id);  
+        if(ret<0 ) fprintf(stderr,"Errori col mittente");
+        fprintf(stderr,"Mittente: %s\n",(char *)nome);  
         ret = ricevi(oggetto , OGGETTO_LEN,socket_desc);
         if(ret<0) fprintf(stderr,"Errori con l'oggetto");
-        fprintf(stderr,"Oggetto=%s",(char *)id);  
+        fprintf(stderr,"Oggetto:%s\n",oggetto);  
         ricevi(messaggio , TESTO_LEN,socket_desc);
         if(ret<0) fprintf(stderr,"Errori il Testo");            
-        fprintf(stderr,"Testo=%s",(char *)id); }
-        else fprintf(stderr,"siamo spiacenti ma il messaggio da lei cercato non è prente");
-        break;/*
+        fprintf(stderr,"Testo:%s\n", messaggio );}
+        else fprintf(stderr,"Siamo spiacenti ma il messaggio da lei cercato non è presente\n");
+        break;
+        /*
         case "C":
         break;*/
         }
@@ -150,7 +153,7 @@ int main(int argc, char* argv[]) {
     fgetc(stdin);//pulisce da /n
     }
     //------------------AVVERTO SERVER SE REGISTRAZIONE O LOG IN------------------//
-     while ( (ret = send(socket_desc, old_or_new, sizeof(char), 0)) < 0) {
+     while ( (ret = spedisci(old_or_new, 2*sizeof(char), socket_desc)) < 0) {
         if (errno == EINTR) continue;
         ERROR_HELPER(-1, "Cannot write to socket");
     }
@@ -170,7 +173,7 @@ int main(int argc, char* argv[]) {
     fgets(usr_name,DESTINATARIO_LEN,stdin); //---->INSERISCI CONTROLLI 
     char * PATH=(char*)malloc(strlen(BASE_PATH)+strlen(usr_name));
     strcpy(PATH,BASE_PATH);
-    while ( (ret = send(socket_desc, usr_name, usr_name_len, 0)) < 0) {
+    while ( (ret = spedisci(usr_name, usr_name_len, socket_desc)) < 0) {
         if (errno == EINTR) continue;
         ERROR_HELPER(-1, "Cannot write to socket");
     }
@@ -178,7 +181,7 @@ int main(int argc, char* argv[]) {
     if (DEBUG) fprintf(stderr, "sent: %s \n", usr_name);
    printf("Inserisci una password (minimo 8 massimo 32 caratteri)\n"); 
    fgets(usr_pwd,DESTINATARIO_LEN,stdin);   //---->INSERISCI CONTROLLI
-   while ( (ret = send(socket_desc, usr_pwd, usr_pwd_len, 0)) < 0) {
+   while ( (ret = spedisci(usr_pwd, usr_pwd_len, socket_desc)) < 0) {
         if (errno == EINTR) continue;
         ERROR_HELPER(-1, "Cannot write to socket");
     }
@@ -186,14 +189,15 @@ int main(int argc, char* argv[]) {
     if (DEBUG) fprintf(stderr, "sent: %s \n", usr_pwd);
 
     memset(recv_buf,0,recv_buf_len);
-
+    recv_bytes=-1;
         // risposta sul nome---> dice se per lo user può fare il login se è disponibile per chi si registra
-    while ( (recv_bytes = recv(socket_desc, recv_buf, recv_buf_len, 0)) < 0 ) {
+    while ( (recv_bytes = ricevi(recv_buf, 2,socket_desc)) < 0 ) {
         if (errno == EINTR) continue;
+       
         ERROR_HELPER(-1, "Cannot write to socket");
     }
 
-    if (DEBUG){ 
+    
         if(!memcmp(old_or_new,"0",sizeof(char))){ //è un utente che vuole registrarsi 
             if(!memcmp(recv_buf,"0",sizeof(char))){
                 fprintf(stderr,"Siamo spiacenti ma lo username da lei scelto è già in uso da un altro utente. Arrivederci\n");}
@@ -211,7 +215,7 @@ int main(int argc, char* argv[]) {
                 logged_client(socket_desc);
                 }
             }
-            }
+            
     recv_buf[recv_bytes] = '\0'; // add string terminator manually!*/
 
     
