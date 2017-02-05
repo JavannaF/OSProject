@@ -51,7 +51,7 @@ int spedisci(char*buf, int dim, int socket_desc){
     recv_bytes += spediti;
     
     
-    if (recv_bytes == 0){fprintf(stderr,"ERRORE\n");break;}
+    if (recv_bytes == 0){fprintf(stderr,"ERRORE\n"); return -1;}
 }
  return spediti;   
 }
@@ -99,17 +99,17 @@ void logged_client(int socket_desc){
         if(ret==-1) fprintf(stderr,"ERRORE\n");
         fprintf(stderr,"ID mandato= %s\n",(char *)id); 
         ret = ricevi(&presenza_id, 2*sizeof(char), socket_desc);
-        if(ret<0) fprintf(stderr,"Errori col mittente");
+        if(ret<0) fprintf(stderr,"Errori col mittente\n");
         fprintf(stderr,"presenza id ricevuta %s\n",&presenza_id);
         if(!memcmp(&presenza_id,"1",2*sizeof(char))){
         ret = ricevi(nome , MITTENTE_LEN, socket_desc);
-        if(ret<0 ) fprintf(stderr,"Errori col mittente");
+        if(ret<0 ) fprintf(stderr,"Errori col mittente\n");
         fprintf(stderr,"Mittente: %s\n",(char *)nome);  
         ret = ricevi(oggetto , OGGETTO_LEN,socket_desc);
-        if(ret<0) fprintf(stderr,"Errori con l'oggetto");
+        if(ret<0) fprintf(stderr,"Errori con l'oggetto\n");
         fprintf(stderr,"Oggetto:%s\n",oggetto);  
         ricevi(messaggio , TESTO_LEN,socket_desc);
-        if(ret<0) fprintf(stderr,"Errori il Testo");            
+        if(ret<0) fprintf(stderr,"Errori il Testo\n");            
         fprintf(stderr,"Testo:%s\n", messaggio );}
         else fprintf(stderr,"Siamo spiacenti ma il messaggio da lei cercato non è presente\n");
         break;
@@ -141,7 +141,7 @@ int main(int argc, char* argv[]) {
 
     // create a socket
     socket_desc = socket(AF_INET, SOCK_STREAM, 0);
-    ERROR_HELPER(socket_desc, "Could not create socket");
+    ERROR_HELPER(socket_desc, "Non riesco a creare la socket\n");
 
     // set up parameters for the connection
     server_addr.sin_addr.s_addr = inet_addr(SERVER_ADDRESS);
@@ -150,21 +150,21 @@ int main(int argc, char* argv[]) {
 //FASE 1: Log_In e Registrazione 
     // initiate a connection on the socket
     ret = connect(socket_desc, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
-    ERROR_HELPER(ret, "Could not create connection");
+    ERROR_HELPER(ret, "Non riesco a stabilireuna connessione\n");
 
-    if (DEBUG) {//CHICK CHECK THIS
-    fprintf(stderr, "Connection established!\n");    
+
+    fprintf(stderr, "Connessione stabilita!\n");    
     printf("Benvenuto! Se sei un nuovo utente premi '0', '1' altrimenti.\n");
     *old_or_new=fgetc(stdin);
     fgetc(stdin);//pulisce da /n
-    }
+    
     //------------------AVVERTO SERVER SE REGISTRAZIONE O LOG IN------------------//
-     while ( (ret = spedisci(old_or_new, 2*sizeof(char), socket_desc)) < 0) {
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to socket");
+    if( spedisci(old_or_new, 2*sizeof(char), socket_desc) < 0) {
+        
+       fprintf(stderr,"Errore nell'invio dei dati al sever, Arrivederci\n"); return -1;
     }
     
-    if (DEBUG) fprintf(stderr, "sent: %s \n", old_or_new);
+    fprintf(stderr, "sent: %s \n", old_or_new);
     
     char* recv_buf=(char *) malloc(sizeof(char));
     size_t recv_buf_len = sizeof(char);
@@ -175,32 +175,28 @@ int main(int argc, char* argv[]) {
     char* usr_pwd=(char*)malloc(32*sizeof(char));
     size_t usr_name_len = 32*sizeof(char);
     size_t usr_pwd_len = 32*sizeof(char);
-    printf("Inserisci uno user name (minimo 8 massimo 32 caratteri) \n"); 
+    printf("Inserisci uno username (massimo 32 caratteri) \n"); 
     fgets(usr_name,DESTINATARIO_LEN,stdin); //---->INSERISCI CONTROLLI 
     char * PATH=(char*)malloc(strlen(BASE_PATH)+strlen(usr_name));
     strcpy(PATH,BASE_PATH);
-    while ( (ret = spedisci(usr_name, usr_name_len, socket_desc)) < 0) {
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to socket");
+   if(spedisci(usr_name, usr_name_len, socket_desc) <= 0) {
+               fprintf(stderr,"Errore nell'invio dei dati al sever, Arrivederci \n"); return -1;
     }
     
-    if (DEBUG) fprintf(stderr, "sent: %s \n", usr_name);
-   printf("Inserisci una password (minimo 8 massimo 32 caratteri)\n"); 
+   fprintf(stderr, "sent: %s \n", usr_name);
+   printf("Inserisci una password (massimo 32 caratteri)\n"); 
    fgets(usr_pwd,DESTINATARIO_LEN,stdin);   //---->INSERISCI CONTROLLI
-   while ( (ret = spedisci(usr_pwd, usr_pwd_len, socket_desc)) < 0) {
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to socket");
+   if(spedisci(usr_pwd, usr_pwd_len, socket_desc) <= 0) {
+       fprintf(stderr,"Errore nell'invio dei dati al sever, Arrivederci\n"); return -1;
     }
     
-    if (DEBUG) fprintf(stderr, "sent: %s \n", usr_pwd);
+    fprintf(stderr, "sent: %s \n", usr_pwd);
 
     memset(recv_buf,0,recv_buf_len);
     recv_bytes=-1;
         // risposta sul nome---> dice se per lo user può fare il login se è disponibile per chi si registra
-    while ( (recv_bytes = ricevi(recv_buf, 2,socket_desc)) < 0 ) {
-        if (errno == EINTR) continue;
-       
-        ERROR_HELPER(-1, "Cannot write to socket");
+    if(ricevi(recv_buf, 2,socket_desc) <= 0 ) {
+       fprintf(stderr,"Errore nella ricezione dei dati dal sever, Arrivederci \n"); return -1;
     }
 
     
@@ -228,11 +224,11 @@ int main(int argc, char* argv[]) {
 
     // close the socket
     ret = close(socket_desc);
-    ERROR_HELPER(ret, "Cannot close socket");
+    ERROR_HELPER(ret, "Non riesco a chiudere la socket \n");
 
-    printf("Answer from server: %s", recv_buf);
+    //("Answer from server: %s", recv_buf);
 
-    if (DEBUG) fprintf(stderr, "Exiting...\n");
+    if (DEBUG) fprintf(stderr, "Arrivedercie Grazie di aver usato il nostro servizio di messaggistica!\n");
 
     exit(EXIT_SUCCESS);
 

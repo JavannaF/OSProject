@@ -18,13 +18,13 @@
   5.Cancellare messaggi in archivio
 */
 //Gestione segnali
-#define timeout 10
+#define timeout 300
 
 
 int socket_desc;//descrittore della socket
+int client_desc;
 void finisci(int sgnumber){
-    close(socket_desc);
-	exit(EXIT_FAILURE);
+    close(client_desc);
 }
 
 
@@ -59,7 +59,7 @@ int ricevi(char *buf, int dim, int socket_desc){
     if (recv_bytes > 0 && (buf[recv_bytes - 1] == '\0' || recv_bytes>32*sizeof(char))) {
     flag = 0;
     }
-    if (recv_bytes == 0)break;
+    if (recv_bytes == 0){fprintf(stderr,"ERROR"); return -1;}
     }
     return recv_bytes;
     }
@@ -70,20 +70,22 @@ int logged_server(int socket_desc, user_t* loggeduser){
    
    char * opzione=(char *)malloc(2*sizeof(char));
    int opzione_len=sizeof(char);
-   
+   int ret;
         //Parte che legge l'opzione
     messaggio_t* messaggio=(messaggio_t*) malloc(sizeof(messaggio_t));
     messaggio->destinatario=(char*)malloc(32*sizeof(char));
     messaggio->oggetto=(char*)malloc(64*sizeof(char));
     messaggio->testo=(char*)malloc(256*sizeof(char));
-    ricevi(opzione, opzione_len+1, socket_desc);
-
+    ret=ricevi(opzione, opzione_len+1, socket_desc);
+    if(ret<0){ 
+        fprintf(stderr,"Non riesco a ricevere dalla socket, passaggio al cliente succerrsivo;");
+        return -1;}
          //while(!memcmp(opzione[letti-1],"\0")){letti=(read(socket_desc, opzione, opzione_len))}
      
    
     fprintf(stderr, "opzione ricevuta: %s\n", opzione);
     int opzioneint=atoi(opzione);
-    int ret;
+
     char ID[5]={0};
         char* PATH_LETTO=(char *)malloc((strlen(BASE_PATH)+ MITTENTE_LEN)*sizeof(char));
      switch (opzioneint){
@@ -93,7 +95,9 @@ int logged_server(int socket_desc, user_t* loggeduser){
     //----------------RICEVO IL DESTINATARIO-----------------//
     
     ret=ricevi(messaggio->destinatario, DESTINATARIO_LEN, socket_desc);
-    if(ret<0) return -1;
+    if(ret<0){ 
+        fprintf(stderr,"Non riesco a ricevere dalla socket, passaggio al cliente succerrsivo;");
+        return -1;}
     user_t* destinatario=(user_t *)malloc(sizeof(user_t));
     
     fprintf(stderr, "destinatario: %s %d\n", messaggio->destinatario,(int)strlen(messaggio->destinatario));
@@ -113,7 +117,9 @@ int logged_server(int socket_desc, user_t* loggeduser){
     //------------------RICEVO L'OGGETTO--------------------//
     
     ret=ricevi(messaggio->oggetto, OGGETTO_LEN, socket_desc);
-    if(ret<0) return -1;
+    if(ret<0){ 
+        fprintf(stderr,"Non riesco a ricevere dalla socket, passaggio al cliente succerrsivo;");
+        return -1;}
    // messaggio->oggetto[ret]='\0';
     fprintf(stderr, "oggetto: %s\n", messaggio->oggetto);
     
@@ -121,8 +127,10 @@ int logged_server(int socket_desc, user_t* loggeduser){
         
      //------------------RICEVO IL TESTO--------------------//       
     ret=ricevi(messaggio->testo, TESTO_LEN+1,socket_desc);
-    if (ret==-1) return -1;
-    if (DEBUG) fprintf(stderr, "messaggio: %s\n", messaggio->testo);
+    if (ret<0){ 
+        fprintf(stderr,"Non riesco a ricevere dalla socket, passaggio al cliente succerrsivo;");
+        return -1;}
+    fprintf(stderr, "messaggio: %s\n", messaggio->testo);
     
     //-----------ARCHIVIO IL MESSAGGIO--------------------//
     //---per creare l'id del ricevente leggo il contatore 
@@ -198,17 +206,17 @@ int logged_server(int socket_desc, user_t* loggeduser){
     if(!ret){
     char* permesso="1";
     ret=spedisci(permesso, 2*sizeof(char), socket_desc);
-    if(ret<0)fprintf(stderr,"Problemi con l'invio del codice");
+    if(ret<0){fprintf(stderr,"Problemi con l'invio del codice"); return -1;}
     fprintf(stderr,"Permesso Inviato %s",permesso);
     ret=spedisci(messaggio->destinatario, MITTENTE_LEN, socket_desc);
-    if(ret<0)fprintf(stderr,"Problemi con l'invio del mittente");
+    if(ret<0){fprintf(stderr,"Problemi con l'invio del mittente");return -1;}
     fprintf(stderr,"Permesso Inviato %s",permesso);
     ret=spedisci(messaggio->oggetto, OGGETTO_LEN, socket_desc);
-    if(ret<0)fprintf(stderr,"Problemi con l'invio dell'oggetto");
+    if(ret<0){fprintf(stderr,"Problemi con l'invio dell'oggetto");return -1;}
     fprintf(stderr,"Permesso Inviato %s",permesso);
     ret=spedisci(messaggio->testo, TESTO_LEN, socket_desc);
     fprintf(stderr,"%s\n",messaggio->testo);
-    if(ret<0)fprintf(stderr,"Problemi con l'invio del testo");
+    if(ret<0){fprintf(stderr,"Problemi con l'invio del testo");return -1;}
     }
    
     break;
@@ -320,10 +328,7 @@ int logged_server(int socket_desc, user_t* loggeduser){
     
     
     }
-    
-int cercaMessaggio(char ID[5],messaggio_t* mesletto,user_t* loggeduser){ /////NB: in questa parte di codice utilizzo messaggi->destinatario per salvare il MITTENTE
-    //free(PATH_LETTO);
-    }    
+       
 int cercaFile(FILE * file,user_t user, short int pwd){
 
         char* letto=(char *)malloc(32*sizeof(char));
@@ -334,13 +339,13 @@ int cercaFile(FILE * file,user_t user, short int pwd){
         int letto_len;
         fgets(letto,32*sizeof(char), file);
         //letto_len=strlen(letto);
-        fprintf(stderr,"1 letto:%s zap len:%d\n",letto, (int)strlen(letto));
-        fprintf(stderr,"2username:%s zap len:%d\n",user.name,usrname_len);
+        //fprintf(stderr,"1 letto:%s zap len:%d\n",letto, (int)strlen(letto));
+        //fprintf(stderr,"2 username:%s zap len:%d\n",user.name,usrname_len);
 	    while(!feof(file)) {
             letto_len=(int)strlen(letto)-1;
-            fprintf(stderr,"TU CERCHI QUESTO letto:%s usrnm:%s risultato:%d\n",letto,user.name, memcmp(letto,user.name, usrname_len-1));
+            //fprintf(stderr,"TU CERCHI QUESTO letto:%s usrnm:%s risultato:%d\n",letto,user.name, memcmp(letto,user.name, usrname_len-1));
             if(letto_len==usrname_len  && !memcmp(letto, user.name, usrname_len)){
-                fprintf(stderr,"TU CERCHI QUESTO letto:%s usrnm:%s risultato:%d\n",letto,user.name, memcmp(letto,user.name, usrname_len-1));
+              //  fprintf(stderr,"TU CERCHI QUESTO letto:%s usrnm:%s risultato:%d\n",letto,user.name, memcmp(letto,user.name, usrname_len-1));
 		        fgets(pass,32*sizeof(char), file);
                 if(pwd && strlen(pass)-1==strlen(user.password) && !memcmp(pass,user.password, strlen(user.password))){                   
 			 //Trova lo username e corrisponde alla password 
@@ -391,28 +396,29 @@ void connection_handler(int socket_desc) {
     char * old_or_new= (char *) malloc(sizeof(char));
     
     //-------RICEVO L'INFORMAZIONE: Se Registrazione o Log IN---------------//
-    while ( (recv_bytes = ricevi(old_or_new, sizeof(old_or_new),socket_desc)) < 0 ) {
-        
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to socket");
-    }
-    if (DEBUG) fprintf(stderr, "log 1 or new 0: %s \n", old_or_new);//check_this      
+    if(ricevi(old_or_new, sizeof(old_or_new),socket_desc) < 0 ) {
+        fprintf(stderr,"Non riesco a scrivere alla socket, passaggio al cliente succerrsivo;");
+        return;}
+    
+   fprintf(stderr, "log 1 or new 0: %s \n", old_or_new);//check_this      
     
     
     //-------RICEVO USERNAME E PASSWORD-----------//
-    while ( (recv_bytes = ricevi(user->name, 32*sizeof(char), socket_desc)) < 0 ) {
+    if ( ricevi(user->name, 32*sizeof(char), socket_desc) < 0 ) {
         
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to socket");
+        
+        fprintf(stderr,"Non riesco a scrivere alla socket, passaggio al cliente succerrsivo;");
+        return;
     }
-    if (DEBUG) fprintf(stderr, "username received: %s \n", user->name);//check_this
+    fprintf(stderr, "username received: %s \n", user->name);//check_this
     user->name[strlen(user->name)-1]='\0';
-    while ( (recv_bytes = ricevi(user->password, 32*sizeof(char), socket_desc)) < 0 ) {
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to socket");
+    if(ricevi(user->password, 32*sizeof(char), socket_desc)<0) {
+        
+        fprintf(stderr,"Non riesco a scrivere alla socket, passaggio al cliente succerrsivo;");
+        return;
     }
     
-    if (DEBUG) fprintf(stderr, "password received: %s \n", user->password);//check_this
+    fprintf(stderr, "password received: %s \n", user->password);//check_this
     
     
     FILE * file=fopen("user_data","r");
@@ -448,47 +454,40 @@ void connection_handler(int socket_desc) {
                 
                 logged="1";
                 
-                    while ( (ret = spedisci(logged, 2, socket_desc)) < 0 ) {
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to the socket");
-        logged_server(socket_desc, user);
+if (spedisci(logged, 2, socket_desc) < 0 ) {
+        fprintf(stderr,"Non riesco a scrivere alla socket, passaggio al cliente succerrsivo;");
+        return;
+        
     }
   
     logged_server(socket_desc, user);}
                 
         else{ logged="0"; 
-                            while ( (ret = spedisci(logged, 2, socket_desc)) < 0 ) {
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to the socket");
-        logged_server(socket_desc, user);}
-    }fprintf(stderr, "sent: %s \n", logged);}
+                            if( spedisci(logged, 2, socket_desc) < 0 ) {
+         fprintf(stderr,"Non riesco a scrivere alla socket, passaggio al cliente succerrsivo;");
+        return;
+        
+    }fprintf(stderr, "sent: %s \n", logged);}}
     
         //lo username è già stato usato
     else{//è un utente che vuole loggarsi
         if(ceono==1){ logged="1";
-                while ( (ret = spedisci(logged, 2, socket_desc)) < 0 ) {
+                if (spedisci(logged, 2, socket_desc) < 0 ) {
                     
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to the socket");
+        fprintf(stderr,"Non riesco a scrivere alla socket, passaggio al cliente succerrsivo;");
+        return;
     }
     fprintf(stderr, "sent: %s \n", logged);
     
         logged_server(socket_desc,user);
         }
         else{ logged="0";
-                            while ( (ret = spedisci(logged, 2,socket_desc)) < 0 ) {
-        if (errno == EINTR) continue;
-        ERROR_HELPER(-1, "Cannot write to the socket");
+        if (spedisci(logged, 2,socket_desc) < 0 ) {
+         fprintf(stderr,"Non riesco a scrivere alla socket, passaggio al cliente succerrsivo;");
+        return;}
     }
-    fprintf(stderr, "sent: %s \n", logged);}
     }
     free(old_or_new);
-
-    
-
-
-    
-
 
     //libero la memoria allocata
     
@@ -509,7 +508,7 @@ void connection_handler(int socket_desc) {
 // --------------------------------------------------------------------------------------------
 int main(int argc, char* argv[]) {
     int ret;
-    int client_desc;
+    
     
     // some fields are required to be filled with 0
     struct sockaddr_in server_addr = {0}, client_addr = {0};
