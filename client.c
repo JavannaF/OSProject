@@ -28,12 +28,13 @@ int ricevi(char *buf, int dim, int socket_desc){
     while (flag) {
     letti = recv(socket_desc, buf + recv_bytes, dim - recv_bytes, 0);
     if (letti < 0 && errno == EINTR) continue;
-    if (letti < 0) return -1;//error: return -1
+    if (letti < 0) {fprintf(stderr,"ERRORE\n");return -1;}//error: return -1
+    if(letti==0) {fprintf(stderr,"ERRORE\n");break;}
     recv_bytes += letti;
     if (recv_bytes > 0 && (buf[recv_bytes - 1] == '\0' || recv_bytes>32*sizeof(char))) {
     flag = 0;
     }
-    if (recv_bytes == 0)break;
+    if (recv_bytes == 0) {fprintf(stderr,"ERRORE\n");break;}
     }
     return recv_bytes;
     }
@@ -46,11 +47,11 @@ int spedisci(char*buf, int dim, int socket_desc){
     while (recv_bytes<dim) {
     spediti = send(socket_desc, buf+ recv_bytes, dim - recv_bytes, 0);
     if (spediti < 0 && errno == EINTR) continue;
-    if (spediti < 0) return -1;//error: return -1
+    if (spediti < 0) {fprintf(stderr,"ERRORE\n");return -1;}//error: return -1
     recv_bytes += spediti;
     
     
-    //if (recv_bytes == 0)break;
+    if (recv_bytes == 0){fprintf(stderr,"ERRORE\n");break;}
 }
  return spediti;   
 }
@@ -76,7 +77,7 @@ void logged_client(int socket_desc){
         fprintf(stderr, "A chi vuoi inviare il tuo messaggio?\n");//chiedo il nome
         fgets(nome,DESTINATARIO_LEN,stdin);
         ret=spedisci(nome,strlen(nome)+1,socket_desc);
-        fprintf(stderr, "sent: %s quanti byte mando(teminatore + a capo)%d quanty byte è lungo il nome(a capo)%d\n", nome,ret,((int)(strlen(nome))));
+        fprintf(stderr, "sent: %s quanti byte mando(teminatore + a capo)%d quanti byte è lungo il nome(a capo)%d\n", nome,ret,((int)(strlen(nome))));
         fprintf(stderr, "Quale è l'oggetto del tuo messaggio? \n");//chiedo l'oggetto
         fgets(oggetto,OGGETTO_LEN,stdin);
         ret = spedisci(oggetto, strlen(oggetto)+1, socket_desc);
@@ -112,9 +113,14 @@ void logged_client(int socket_desc){
         fprintf(stderr,"Testo:%s\n", messaggio );}
         else fprintf(stderr,"Siamo spiacenti ma il messaggio da lei cercato non è presente\n");
         break;
-        /*
-        case "C":
-        break;*/
+        
+        case 3:
+         
+        fprintf(stderr,"Digita l'ID del messaggio che vuoi cancellare: ");
+        char ID[5]={0};
+        fgets((char *)ID,5,stdin);
+        ret=spedisci((char *) ID,5,socket_desc);
+        break;
         }
     return;
     

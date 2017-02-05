@@ -34,5 +34,5 @@ typedef struct {
    int ID;
 }messaggio_t;
 
-int cercaFile(FILE * file,user_t user);
+int cercaFile(FILE * file,user_t user, short int pwd);
 #endif
