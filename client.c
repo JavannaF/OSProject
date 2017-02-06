@@ -26,8 +26,6 @@ int main(int argc, char* argv[]) {
     
     int ret;
     char* old_or_new=(char *)malloc(sizeof(char));
-    size_t allowed_command_len_min = 5*sizeof(char);
-    size_t allowed_command_len_max = 32*sizeof(char);
     // variables for handling a socket
     int socket_desc;
     struct sockaddr_in server_addr = {0}; // some fields are required to be filled with 0
@@ -121,7 +119,7 @@ int main(int argc, char* argv[]) {
 
     //("Answer from server: %s", recv_buf);
 
-    if (DEBUG) fprintf(stderr, "Arrivedercie Grazie di aver usato il nostro servizio di messaggistica!\n");
+    fprintf(stderr, "Arrivedercie Grazie di aver usato il nostro servizio di messaggistica!\n");
 
     exit(EXIT_SUCCESS);
 
@@ -190,12 +188,12 @@ void logged_client(int socket_desc){
         fprintf(stderr, "Quale è l'oggetto del tuo messaggio? \n");//chiedo l'oggetto
         fgets(oggetto,OGGETTO_LEN,stdin);
         ret = spedisci(oggetto, strlen(oggetto)+1, socket_desc);
-    if (DEBUG) fprintf(stderr, "sent: %s \n", oggetto);   
+    fprintf(stderr, "sent: %s \n", oggetto);   
     fprintf(stderr, "Scrivi il tuo messaggio qui: \n"); //chiedo il messaggio
     char * temp;
     fgets(messaggio,TESTO_LEN,stdin);  
     ret=spedisci(messaggio, strlen(messaggio)+1,socket_desc);
-    if (DEBUG) fprintf(stderr, "sent: %s \n", messaggio);   
+    fprintf(stderr, "sent: %s \n", messaggio);   
              
         break;
        case 2:

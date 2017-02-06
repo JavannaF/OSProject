@@ -10,11 +10,9 @@
         } while (0)
 
 /* Configuration parameters */
-#define DEBUG           1   // display debug messages
-#define MAX_CONN_QUEUE  3   // max number of connections the server can queue
+#define MAX_CONN_QUEUE  10   // max number of connections the server can queue
 #define SERVER_ADDRESS  "127.0.0.1"
-#define SERVER_COMMAND  "0"
-#define SERVER_PORT     2015
+#define SERVER_PORT     3000
 #define BASE_PATH        "/home/biar/Desktop/OSProject/messaggi/"
 #define DESTINATARIO_LEN  32*sizeof(char)
 #define MITTENTE_LEN  32*sizeof(char)
