@@ -18,6 +18,115 @@
   5. la cancellazione dei messaggi 
 
 */
+int ricevi(char *buf, int dim, int socket_desc);
+int spedisci(char*buf, int dim, int socket_desc);
+void logged_client(int socket_desc);
+
+int main(int argc, char* argv[]) {
+    
+    int ret;
+    char* old_or_new=(char *)malloc(sizeof(char));
+    size_t allowed_command_len_min = 5*sizeof(char);
+    size_t allowed_command_len_max = 32*sizeof(char);
+    // variables for handling a socket
+    int socket_desc;
+    struct sockaddr_in server_addr = {0}; // some fields are required to be filled with 0
+
+    // create a socket
+    socket_desc = socket(AF_INET, SOCK_STREAM, 0);
+    ERROR_HELPER(socket_desc, "Non riesco a creare la socket\n");
+
+    // set up parameters for the connection
+    server_addr.sin_addr.s_addr = inet_addr(SERVER_ADDRESS);
+    server_addr.sin_family      = AF_INET;
+    server_addr.sin_port        = htons(SERVER_PORT); // don't forget about network byte order!
+//FASE 1: Log_In e Registrazione 
+    // initiate a connection on the socket
+    ret = connect(socket_desc, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
+    ERROR_HELPER(ret, "Non riesco a stabilireuna connessione\n");
+
+
+    fprintf(stderr, "Connessione stabilita!\n");    
+    printf("Benvenuto! Se sei un nuovo utente premi '0', '1' altrimenti.\n");
+    *old_or_new=fgetc(stdin);
+    fgetc(stdin);//pulisce da /n
+    
+    //------------------AVVERTO SERVER SE REGISTRAZIONE O LOG IN------------------//
+    if( spedisci(old_or_new, 2*sizeof(char), socket_desc) < 0) {
+        
+       fprintf(stderr,"Errore nell'invio dei dati al sever, Arrivederci\n"); return -1;
+    }
+    
+    fprintf(stderr, "sent: %s \n", old_or_new);
+    
+    char* recv_buf=(char *) malloc(sizeof(char));
+    size_t recv_buf_len = sizeof(char);
+    int recv_bytes;
+
+    /////////////HANDLE USERNAME AND PASSWORD////////////
+    char* usr_name=(char*)malloc(32*sizeof(char));
+    char* usr_pwd=(char*)malloc(32*sizeof(char));
+    size_t usr_name_len = 32*sizeof(char);
+    size_t usr_pwd_len = 32*sizeof(char);
+    printf("Inserisci uno username (massimo 32 caratteri) \n"); 
+    fgets(usr_name,DESTINATARIO_LEN,stdin); 
+    char * PATH=(char*)malloc(strlen(BASE_PATH)+strlen(usr_name));
+    strcpy(PATH,BASE_PATH);
+   if(spedisci(usr_name, usr_name_len, socket_desc) <= 0) {
+               fprintf(stderr,"Errore nell'invio dei dati al sever, Arrivederci \n"); return -1;
+    }
+    
+   fprintf(stderr, "sent: %s \n", usr_name);
+   printf("Inserisci una password (massimo 32 caratteri)\n"); 
+   fgets(usr_pwd,DESTINATARIO_LEN,stdin);   //---->INSERISCI CONTROLLI
+   if(spedisci(usr_pwd, usr_pwd_len, socket_desc) <= 0) {
+       fprintf(stderr,"Errore nell'invio dei dati al sever, Arrivederci\n"); return -1;
+    }
+    
+    fprintf(stderr, "sent: %s \n", usr_pwd);
+
+    memset(recv_buf,0,recv_buf_len);
+    recv_bytes=-1;
+        // risposta sul nome---> dice se per lo user può fare il login se è disponibile per chi si registra
+    if(ricevi(recv_buf, 2,socket_desc) <= 0 ) {
+       fprintf(stderr,"Errore nella ricezione dei dati dal sever, Arrivederci \n"); return -1;
+    }
+
+    
+        if(!memcmp(old_or_new,"0",sizeof(char))){ //è un utente che vuole registrarsi 
+            if(!memcmp(recv_buf,"0",sizeof(char))){
+                fprintf(stderr,"Siamo spiacenti ma lo username da lei scelto è già in uso da un altro utente. Arrivederci\n");}
+            else {
+                fprintf(stderr,"Benvenuto %s",usr_name);
+                logged_client(socket_desc);
+                }
+            }
+        else{
+            if(!memcmp(recv_buf,"0",sizeof(char))){
+                fprintf(stderr,"sono spiacente ma lo Username o la password inserite non sono presenti nel sitema. Arrivederci\n");
+                }
+            else{ 
+                fprintf(stderr,"Bentornato %s\n",usr_name);
+                logged_client(socket_desc);
+                }
+            }
+            
+    recv_buf[recv_bytes] = '\0'; // add string terminator manually!*/
+
+    
+
+    // close the socket
+    ret = close(socket_desc);
+    ERROR_HELPER(ret, "Non riesco a chiudere la socket \n");
+
+    //("Answer from server: %s", recv_buf);
+
+    if (DEBUG) fprintf(stderr, "Arrivedercie Grazie di aver usato il nostro servizio di messaggistica!\n");
+
+    exit(EXIT_SUCCESS);
+
+
+}
 
 
 //funzione per ricevere (gestisce invii parziali)
@@ -129,108 +238,3 @@ void logged_client(int socket_desc){
     
     }
     
-int main(int argc, char* argv[]) {
-    
-    int ret;
-    char* old_or_new=(char *)malloc(sizeof(char));
-    size_t allowed_command_len_min = 5*sizeof(char);
-    size_t allowed_command_len_max = 32*sizeof(char);
-    // variables for handling a socket
-    int socket_desc;
-    struct sockaddr_in server_addr = {0}; // some fields are required to be filled with 0
-
-    // create a socket
-    socket_desc = socket(AF_INET, SOCK_STREAM, 0);
-    ERROR_HELPER(socket_desc, "Non riesco a creare la socket\n");
-
-    // set up parameters for the connection
-    server_addr.sin_addr.s_addr = inet_addr(SERVER_ADDRESS);
-    server_addr.sin_family      = AF_INET;
-    server_addr.sin_port        = htons(SERVER_PORT); // don't forget about network byte order!
-//FASE 1: Log_In e Registrazione 
-    // initiate a connection on the socket
-    ret = connect(socket_desc, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
-    ERROR_HELPER(ret, "Non riesco a stabilireuna connessione\n");
-
-
-    fprintf(stderr, "Connessione stabilita!\n");    
-    printf("Benvenuto! Se sei un nuovo utente premi '0', '1' altrimenti.\n");
-    *old_or_new=fgetc(stdin);
-    fgetc(stdin);//pulisce da /n
-    
-    //------------------AVVERTO SERVER SE REGISTRAZIONE O LOG IN------------------//
-    if( spedisci(old_or_new, 2*sizeof(char), socket_desc) < 0) {
-        
-       fprintf(stderr,"Errore nell'invio dei dati al sever, Arrivederci\n"); return -1;
-    }
-    
-    fprintf(stderr, "sent: %s \n", old_or_new);
-    
-    char* recv_buf=(char *) malloc(sizeof(char));
-    size_t recv_buf_len = sizeof(char);
-    int recv_bytes;
-
-    /////////////HANDLE USERNAME AND PASSWORD////////////
-    char* usr_name=(char*)malloc(32*sizeof(char));
-    char* usr_pwd=(char*)malloc(32*sizeof(char));
-    size_t usr_name_len = 32*sizeof(char);
-    size_t usr_pwd_len = 32*sizeof(char);
-    printf("Inserisci uno username (massimo 32 caratteri) \n"); 
-    fgets(usr_name,DESTINATARIO_LEN,stdin); //---->INSERISCI CONTROLLI 
-    char * PATH=(char*)malloc(strlen(BASE_PATH)+strlen(usr_name));
-    strcpy(PATH,BASE_PATH);
-   if(spedisci(usr_name, usr_name_len, socket_desc) <= 0) {
-               fprintf(stderr,"Errore nell'invio dei dati al sever, Arrivederci \n"); return -1;
-    }
-    
-   fprintf(stderr, "sent: %s \n", usr_name);
-   printf("Inserisci una password (massimo 32 caratteri)\n"); 
-   fgets(usr_pwd,DESTINATARIO_LEN,stdin);   //---->INSERISCI CONTROLLI
-   if(spedisci(usr_pwd, usr_pwd_len, socket_desc) <= 0) {
-       fprintf(stderr,"Errore nell'invio dei dati al sever, Arrivederci\n"); return -1;
-    }
-    
-    fprintf(stderr, "sent: %s \n", usr_pwd);
-
-    memset(recv_buf,0,recv_buf_len);
-    recv_bytes=-1;
-        // risposta sul nome---> dice se per lo user può fare il login se è disponibile per chi si registra
-    if(ricevi(recv_buf, 2,socket_desc) <= 0 ) {
-       fprintf(stderr,"Errore nella ricezione dei dati dal sever, Arrivederci \n"); return -1;
-    }
-
-    
-        if(!memcmp(old_or_new,"0",sizeof(char))){ //è un utente che vuole registrarsi 
-            if(!memcmp(recv_buf,"0",sizeof(char))){
-                fprintf(stderr,"Siamo spiacenti ma lo username da lei scelto è già in uso da un altro utente. Arrivederci\n");}
-            else {
-                fprintf(stderr,"Benvenuto %s",usr_name);
-                logged_client(socket_desc);
-                }
-            }
-        else{
-            if(!memcmp(recv_buf,"0",sizeof(char))){
-                fprintf(stderr,"sono spiacente ma lo Username o la password inserite non sono presenti nel sitema. Arrivederci\n");
-                }
-            else{ 
-                fprintf(stderr,"Bentornato %s\n",usr_name);
-                logged_client(socket_desc);
-                }
-            }
-            
-    recv_buf[recv_bytes] = '\0'; // add string terminator manually!*/
-
-    
-
-    // close the socket
-    ret = close(socket_desc);
-    ERROR_HELPER(ret, "Non riesco a chiudere la socket \n");
-
-    //("Answer from server: %s", recv_buf);
-
-    if (DEBUG) fprintf(stderr, "Arrivedercie Grazie di aver usato il nostro servizio di messaggistica!\n");
-
-    exit(EXIT_SUCCESS);
-
-
-}
